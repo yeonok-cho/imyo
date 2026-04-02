@@ -1,0 +1,31 @@
+#!/bin/bash
+# ipi - venv에 패키지 설치 후 environment.yml 자동 업데이트
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV="$SCRIPT_DIR/venv"
+ENV_YML="$SCRIPT_DIR/environment.yml"
+
+if [ ! -d "$VENV" ]; then
+  echo "venv가 없어요. python3 -m venv $VENV 로 먼저 생성해주세요."
+  exit 1
+fi
+
+"$VENV/bin/pip" install "$@"
+
+PKGS=$("$VENV/bin/pip" freeze)
+
+{
+  echo "name: svdd_project"
+  echo "python: $(python3 --version | awk '{print $2}')"
+  echo "dependencies:"
+  if [ -z "$PKGS" ]; then
+    echo "  []"
+  else
+    echo "$PKGS" | while IFS= read -r pkg; do
+      echo "  - $pkg"
+    done
+  fi
+} > "$ENV_YML"
+
+echo ""
+echo "environment.yml 업데이트 완료!"
