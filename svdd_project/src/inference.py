@@ -17,11 +17,11 @@ import numpy as np
 import torch
 
 sys.path.insert(0, os.path.dirname(__file__))
-from model_v2 import FeatSVDD, extract_features
+from model_v2 import FeatSVDD, MultiCenterSVDD, extract_features
 
 # 기본 경로 (프로젝트 루트 기준)
 _ROOT      = os.path.dirname(os.path.dirname(__file__))
-_MODEL_PT  = os.path.join(_ROOT, 'svdd_model_feat.pt')
+_MODEL_PT  = os.path.join(_ROOT, 'multicenter_model.pt')   # ← Multi-center SVDD
 _NORM_NPY  = os.path.join(_ROOT, 'norm_params.npy')
 _FNORM_NPY = os.path.join(_ROOT, 'feat_norm.npy')
 
@@ -51,13 +51,24 @@ class SVDDInference:
         self.f_mean = fnorm['mean']
         self.f_std  = fnorm['std']
 
-        ck          = torch.load(model_path, map_location=self.device)
-        self.model  = FeatSVDD(ck['latent_dim'], ck['n_feats']).to(self.device)
-        self.model.encoder.load_state_dict(ck['encoder'])
-        self.model.c.copy_(ck['c'])
-        self.model.R.data = torch.tensor(ck['R'])
+        ck = torch.load(model_path, map_location=self.device)
+        if 'K' in ck:
+            # Multi-center SVDD
+            self.model = MultiCenterSVDD(ck['latent_dim'], ck['n_feats'], K=ck['K']).to(self.device)
+            self.model.encoder.load_state_dict(ck['encoder'])
+            for k in range(ck['K']):
+                getattr(self.model, f'c_{k}').copy_(ck[f'c_{k}'])
+                getattr(self.model, f'R_{k}').data = torch.tensor(ck[f'R_{k}'])
+            self.threshold = 1.0          # 정규화 거리이므로 고정
+        else:
+            # 단일 중심 FeatSVDD (하위 호환)
+            self.model = FeatSVDD(ck['latent_dim'], ck['n_feats']).to(self.device)
+            self.model.encoder.load_state_dict(ck['encoder'])
+            self.model.c.copy_(ck['c'])
+            self.model.R.data = torch.tensor(ck['R'])
+            self.threshold = ck['R'] ** 2
         self.model.eval()
-        self.R2 = ck['R'] ** 2
+        self.R2 = self.threshold
 
     # ── 전처리 ────────────────────────────────────────────────────────────────
     def _preprocess(self, A: np.ndarray, B: np.ndarray):
@@ -101,7 +112,7 @@ class SVDDInference:
         """
         X, F   = self._preprocess(profile_A, profile_B)
         scores = self.model.anomaly_score(X, F).cpu().numpy()
-        labels = (scores > self.R2).astype(int)
+        labels = (scores > self.threshold).astype(int)
 
         return {
             'scores'           : scores,

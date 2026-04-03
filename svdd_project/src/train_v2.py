@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from model import Encoder, Decoder   # pretrain용
-from model_v2 import HybridSVDD, FeatSVDD, extract_features
+from model_v2 import HybridSVDD, FeatSVDD, MultiCenterSVDD, extract_features
 
 DEVICE     = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 LATENT_DIM = 32
@@ -128,9 +128,59 @@ def train_feat(X_np, pretrained_enc, epochs=50):
     return model
 
 
+# ── Multi-center SVDD (K=2) ───────────────────────────────────────────────────
+def train_multicenter(X_np, pretrained_enc, epochs=50, K=2):
+    print(f"\n[Approach 3] Multi-center SVDD  (K={K})")
+    F_np   = extract_features(X_np)
+    fnorm  = np.load(f'{ROOT}/feat_norm.npy', allow_pickle=True).item()
+    F_norm = ((F_np - fnorm['mean']) / fnorm['std']).astype(np.float32)
+
+    X  = torch.tensor(X_np)
+    F  = torch.tensor(F_norm)
+    dl  = DataLoader(TensorDataset(X, F), batch_size=BATCH_SIZE, shuffle=True)
+    dl0 = DataLoader(TensorDataset(X, F), batch_size=BATCH_SIZE, shuffle=False)
+
+    model = MultiCenterSVDD(LATENT_DIM, n_feats=F.shape[1], K=K, nu=0.05).to(DEVICE)
+    model.encoder.cnn.load_state_dict(pretrained_enc.state_dict())
+
+    print("  k-means 중심 초기화 중...")
+    model.init_centers(dl0, DEVICE, n_iter=100)
+
+    opt = torch.optim.Adam(model.parameters(), lr=LR * 0.1)
+    for ep in range(1, epochs+1):
+        model.train()
+        total = 0
+        for x, f in dl:
+            x, f = x.to(DEVICE), f.to(DEVICE)
+            loss = model.svdd_loss(x, f)
+            opt.zero_grad(); loss.backward(); opt.step()
+            # R이 음수가 되지 않도록
+            for k in range(K):
+                getattr(model, f'R_{k}').data.clamp_(min=1e-4)
+            total += loss.item()
+        if ep % 10 == 0:
+            Rs = [f"R{k}={getattr(model,f'R_{k}').item():.4f}" for k in range(K)]
+            print(f"  Epoch {ep:3d}/{epochs}  loss={total/len(dl):.5f}  {', '.join(Rs)}")
+
+    save_dict = {
+        'encoder'   : model.encoder.state_dict(),
+        'K'         : K,
+        'latent_dim': LATENT_DIM,
+        'n_feats'   : F.shape[1],
+        'nu'        : model.nu,
+    }
+    for k in range(K):
+        save_dict[f'c_{k}'] = getattr(model, f'c_{k}')
+        save_dict[f'R_{k}'] = getattr(model, f'R_{k}').item()
+
+    torch.save(save_dict, f'{ROOT}/multicenter_model.pt')
+    print("  저장 완료: multicenter_model.pt")
+    return model
+
+
 if __name__ == '__main__':
     X_np       = load_data()
     pretrained = pretrain_encoder(X_np, epochs=30)
-    train_hybrid(X_np, pretrained, epochs=50)
-    train_feat(X_np, pretrained, epochs=50)
+    train_feat(X_np, pretrained, epochs=50)         # feat_norm.npy 생성
+    train_multicenter(X_np, pretrained, epochs=50)
     print("\n모든 학습 완료!")

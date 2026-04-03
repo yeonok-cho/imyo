@@ -178,3 +178,95 @@ class FeatSVDD(nn.Module):
         dists = torch.cat([self.anomaly_score(x.to(device), f.to(device))
                            for x, f in loader])
         self.R.data = torch.sqrt(torch.quantile(dists, 1 - self.nu))
+
+
+# ── Multi-center SVDD (K=2) ───────────────────────────────────────────────────
+class MultiCenterSVDD(nn.Module):
+    """
+    K=2 중심 (c_0, c_1), 각각 반경 (R_0, R_1) 학습.
+
+    anomaly_score = min_k( ||z - c_k||² / R_k² )
+    threshold     = 1.0   (정규화된 거리이므로 고정)
+
+    → score < 1.0 : 어느 구에든 속함 = 정상
+    → score ≥ 1.0 : 모든 구 밖 = 이상
+
+    inference: encoder forward pass + 거리 계산만 (decoder 불필요)
+    """
+    def __init__(self, latent_dim=32, n_feats=30, K=2, nu=0.05):
+        super().__init__()
+        self.K          = K
+        self.nu         = nu
+        self.latent_dim = latent_dim
+        self.encoder    = FeatEncoder(latent_dim, n_feats)
+        for k in range(K):
+            self.register_buffer(f'c_{k}', torch.zeros(latent_dim))
+            self.register_parameter(f'R_{k}', nn.Parameter(torch.tensor(1.0)))
+
+    def _centers(self):
+        return [getattr(self, f'c_{k}') for k in range(self.K)]
+
+    def _radii(self):
+        return [getattr(self, f'R_{k}') for k in range(self.K)]
+
+    def _encode(self, x, feats):
+        return self.encoder(x, feats)
+
+    def _norm_dists(self, z):
+        """정규화 거리 행렬 (N, K):  ||z-c_k||² / R_k²"""
+        return torch.stack(
+            [torch.sum((z - c)**2, dim=1) / (R**2 + 1e-8)
+             for c, R in zip(self._centers(), self._radii())],
+            dim=1
+        )
+
+    @torch.no_grad()
+    def anomaly_score(self, x, feats):
+        """score < 1.0 = 정상,  score ≥ 1.0 = 이상"""
+        return self._norm_dists(self._encode(x, feats)).min(dim=1).values
+
+    def svdd_loss(self, x, feats):
+        z         = self._encode(x, feats)
+        raw_dists = torch.stack(
+            [torch.sum((z - c)**2, dim=1) for c in self._centers()], dim=1
+        )  # (N, K)
+        assignments = raw_dists.detach().argmin(dim=1)
+
+        loss = torch.tensor(0.0, device=x.device)
+        for k in range(self.K):
+            mask = (assignments == k)
+            if mask.sum() == 0:
+                continue
+            R_k  = self._radii()[k]
+            d_k  = raw_dists[mask, k]
+            loss = loss + (R_k**2 + (1/(self.nu * mask.sum())) *
+                           torch.sum(torch.clamp(d_k - R_k**2, min=0))) / self.K
+        return loss
+
+    @torch.no_grad()
+    def init_centers(self, loader, device, n_iter=50):
+        """k-means로 중심 초기화 후 각 클러스터의 (1-nu) 분위수로 R 초기화"""
+        self.encoder.eval()
+        zs = torch.cat([self._encode(x.to(device), f.to(device)) for x, f in loader])
+
+        # k-means
+        cents = [zs[torch.randperm(len(zs))[k]].clone() for k in range(self.K)]
+        for _ in range(n_iter):
+            dists   = torch.stack([torch.sum((zs-c)**2, dim=1) for c in cents], dim=1)
+            assigns = dists.argmin(dim=1)
+            cents   = [zs[assigns==k].mean(0) if (assigns==k).sum()>0 else cents[k]
+                       for k in range(self.K)]
+
+        dists   = torch.stack([torch.sum((zs-c)**2, dim=1) for c in cents], dim=1)
+        assigns = dists.argmin(dim=1)
+
+        for k in range(self.K):
+            c = cents[k]
+            c[(c.abs()<0.01)&(c>=0)] =  0.01
+            c[(c.abs()<0.01)&(c< 0)] = -0.01
+            getattr(self, f'c_{k}').copy_(c)
+            mask   = (assigns == k)
+            d_k    = torch.sum((zs[mask] - c)**2, dim=1)
+            R_init = torch.sqrt(torch.quantile(d_k, 1 - self.nu))
+            getattr(self, f'R_{k}').data = R_init
+            print(f"  Center {k}: n={mask.sum().item()}  R={R_init:.4f}")
