@@ -78,8 +78,8 @@
     .slides-viewport { flex: 1; overflow: hidden; position: relative; }
     .slides-track { display: flex; height: 100%; transition: transform .4s cubic-bezier(.4,0,.2,1); }
     .slide {
-      min-width: 100%; height: 100%; overflow-y: auto;
-      padding: 36px 24px 72px; display: flex; align-items: flex-start; justify-content: center;
+      min-width: 100%; height: 100%; overflow: hidden;
+      padding: 28px 28px 16px; display: flex; align-items: flex-start; justify-content: center;
     }
     .slide-inner { width: 100%; max-width: 840px; }
 
@@ -228,79 +228,127 @@
     .step-badge { display: inline-block; margin-top: 6px; font-size: .71rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--soft); border: 1px solid var(--border); color: var(--muted); }
     .kbd { background: var(--soft); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: .78rem; font-family: monospace; color: var(--text); }
 
-    /* ── Slide 8 — Mode cards (expandable) ── */
-    .mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    /* ── Slide 8 — Mode cards (flex shrink/expand) ── */
+    .mode-grid {
+      display: flex; gap: 10px; margin-bottom: 14px;
+      align-items: stretch; height: 78px; /* fixed height — never expands */
+    }
     .mode-card {
+      flex: 1; min-width: 0; overflow: hidden;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius); box-shadow: var(--shadow);
-      cursor: pointer; overflow: hidden;
-      transition: border-color .2s, box-shadow .2s;
+      cursor: pointer; padding: 12px 14px;
+      display: flex; flex-direction: column; justify-content: center;
+      transition: flex .38s cubic-bezier(.4,0,.2,1),
+                  border-color .2s, box-shadow .2s;
     }
     .mode-card:hover { border-color: var(--primary-br); }
     .mode-card.active {
+      flex: 2.8;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px var(--primary-bg), var(--shadow);
     }
-    .mode-card-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px; gap: 8px; user-select: none;
+    .mode-card.shrunk {
+      flex: 0 0 58px; padding: 12px 6px;
+      align-items: center; justify-content: center;
     }
-    .mode-card-left { display: flex; align-items: center; gap: 9px; }
-    .mode-card-emoji { font-size: 1.1rem; }
-    .mode-card-name { font-size: .87rem; font-weight: 700; }
-    .mode-card-arrow {
-      font-size: .8rem; color: var(--muted);
-      transition: transform .25s cubic-bezier(.4,0,.2,1), color .2s;
-      flex-shrink: 0; font-weight: 700;
+    /* top row: emoji + name + optional badge */
+    .mode-card-row {
+      display: flex; align-items: center; gap: 8px;
     }
-    .mode-card.active .mode-card-arrow { transform: rotate(90deg); color: var(--primary); }
-    .mode-card-body {
-      max-height: 0; overflow: hidden;
-      transition: max-height .32s cubic-bezier(.4,0,.2,1);
+    .mode-card-emoji { font-size: 1rem; flex-shrink: 0; }
+    .mode-card-name {
+      font-size: .85rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+      transition: opacity .2s;
     }
-    .mode-card.active .mode-card-body { max-height: 160px; }
-    .mode-card-body-inner {
-      border-top: 1px solid var(--border-sm);
-      padding: 12px 16px 16px;
-    }
-    .mode-card-desc { font-size: .79rem; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+    .mode-card.shrunk .mode-card-name { display: none; }
     .mode-badge {
-      display: inline-block; font-size: .7rem; font-weight: 700;
+      font-size: .67rem; font-weight: 700;
       background: var(--primary-bg); color: var(--primary);
-      border: 1px solid var(--primary-br); padding: 2px 9px; border-radius: 99px;
+      border: 1px solid var(--primary-br); padding: 1px 7px; border-radius: 99px;
+      flex-shrink: 0; white-space: nowrap;
+      opacity: 0; transition: opacity .2s .1s;
+    }
+    .mode-card.active .mode-badge { opacity: 1; }
+    .mode-card.shrunk .mode-badge { display: none; }
+    /* description — visible only when active, within fixed height */
+    .mode-card-detail {
+      font-size: .74rem; color: var(--muted); line-height: 1.4;
+      margin-top: 5px;
+      max-height: 0; overflow: hidden; opacity: 0;
+      transition: max-height .32s cubic-bezier(.4,0,.2,1), opacity .2s .1s;
+    }
+    .mode-card.active .mode-card-detail { max-height: 36px; opacity: 1; }
+    /* shrunk state: show only emoji, centered */
+    .mode-card.shrunk .mode-card-row { justify-content: center; }
+    .mode-card-shrunk-label {
+      font-size: .6rem; color: var(--muted); margin-top: 3px;
+      text-align: center; line-height: 1.2; white-space: nowrap;
+      opacity: 0; transition: opacity .2s;
+    }
+    .mode-card.shrunk .mode-card-shrunk-label { opacity: 1; }
+
+    /* ── Slide 8 — Tips trigger button ── */
+    .tips-trigger {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px;
+      cursor: pointer; box-shadow: var(--shadow);
+      transition: border-color .2s, box-shadow .2s, background .2s;
+      text-align: left;
+    }
+    .tips-trigger:hover {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-bg), var(--shadow);
+    }
+    .tips-trigger-left { display: flex; align-items: center; gap: 12px; }
+    .tips-trigger-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .tips-trigger-title { font-size: .9rem; font-weight: 700; margin-bottom: 2px; }
+    .tips-trigger-sub { font-size: .74rem; color: var(--muted); }
+    .tips-trigger-cta {
+      font-size: .82rem; font-weight: 700; color: var(--primary);
+      white-space: nowrap; flex-shrink: 0;
+      display: flex; align-items: center; gap: 4px;
     }
 
-    /* ── Slide 8 — Tip accordion ── */
-    .tip-list { display: flex; flex-direction: column; gap: 7px; }
-    .tip-item {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); box-shadow: var(--shadow);
-      overflow: hidden; cursor: pointer;
-      transition: border-color .2s;
+    /* ── Tips full-screen overlay ── */
+    .tips-overlay {
+      position: fixed; inset: 0; z-index: 400;
+      background: var(--surface);
+      display: flex; flex-direction: column;
+      transform: translateY(100%);
+      transition: transform .4s cubic-bezier(.4,0,.2,1);
+      pointer-events: none;
     }
-    .tip-item:hover { border-color: var(--primary-br); }
-    .tip-item.open { border-color: var(--primary); }
-    .tip-item.tip-safe { border-color: var(--green-br); }
-    .tip-item.tip-safe.open { border-color: var(--green); }
-    .tip-header {
+    .tips-overlay.open { transform: translateY(0); pointer-events: auto; }
+    .tips-overlay-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; gap: 8px; user-select: none;
+      padding: 16px 28px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+      background: var(--surface);
     }
-    .tip-header-left { display: flex; align-items: center; gap: 8px; }
+    .tips-overlay-title { font-size: 1rem; font-weight: 800; }
+    .tips-close-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--soft);
+      cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--muted);
+      transition: border-color .15s, color .15s;
+    }
+    .tips-close-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .tips-overlay-body {
+      flex: 1; overflow-y: auto; padding: 24px 28px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      align-content: start;
+    }
+    .tip-full {
+      background: var(--soft); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px;
+    }
+    .tip-full:nth-child(5) { grid-column: 1 / -1; border-color: var(--green-br); background: var(--green-bg); }
+    .tip-full-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
     .tip-star { font-size: .72rem; font-weight: 800; color: var(--primary); background: var(--primary-bg); border: 1px solid var(--primary-br); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
-    .tip-title { font-size: .86rem; font-weight: 700; }
-    .tip-arrow {
-      font-size: .8rem; color: var(--muted); font-weight: 700; flex-shrink: 0;
-      transition: transform .25s cubic-bezier(.4,0,.2,1), color .2s;
-    }
-    .tip-item.open .tip-arrow { transform: rotate(90deg); color: var(--primary); }
-    .tip-item.tip-safe.open .tip-arrow { color: var(--green); }
-    .tip-body {
-      max-height: 0; overflow: hidden;
-      transition: max-height .32s cubic-bezier(.4,0,.2,1);
-    }
-    .tip-item.open .tip-body { max-height: 160px; }
-    .tip-body-inner { border-top: 1px solid var(--border-sm); padding: 12px 16px 14px; }
+    .tip-full-title { font-size: .9rem; font-weight: 700; }
     .tip-examples { display: flex; flex-direction: column; gap: 6px; }
     .tip-ex { display: flex; align-items: flex-start; gap: 8px; font-size: .8rem; line-height: 1.45; }
     .tip-ex-good { color: var(--green); font-weight: 700; flex-shrink: 0; }
@@ -359,7 +407,9 @@
       .three-col, .grid-3 { grid-template-columns: 1fr; }
       .grid-2 { grid-template-columns: 1fr; }
       .usage-flow { grid-template-columns: 1fr 1fr; }
-      .mode-grid { grid-template-columns: 1fr; }
+      .mode-grid { height: auto; flex-direction: column; }
+      .mode-card.shrunk { flex: unset; width: 100%; }
+      .tips-overlay-body { grid-template-columns: 1fr; }
     }
     @media (max-width: 480px) {
       .hero-name { font-size: 3rem; }
@@ -779,7 +829,8 @@
           <div class="slide-num">08 / 10 &nbsp;·&nbsp; 사용법 & 팁</div>
           <h1 class="slide-title">처음 5분 — 이것만 알면 됩니다</h1>
 
-          <div class="usage-flow">
+          <!-- 4-step flow -->
+          <div class="usage-flow" style="margin-bottom:14px;">
             <div class="usage-step">
               <span class="usage-step-icon">💬</span>
               <div class="usage-step-num">1</div>
@@ -802,7 +853,8 @@
             </div>
           </div>
 
-          <div class="card" style="margin-bottom:16px;">
+          <!-- Example -->
+          <div class="card" style="margin-bottom:14px;">
             <div class="card-label">예시</div>
             <div style="display:flex;flex-direction:column;gap:8px;">
               <div style="display:flex;align-items:flex-start;gap:10px;">
@@ -816,122 +868,50 @@
             </div>
           </div>
 
-          <div class="card-label" style="margin-bottom:8px;">모드 소개 <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— 클릭해서 자세히 보기</span></div>
-          <div class="mode-grid">
+          <!-- Mode cards — flex shrink/expand, fixed height -->
+          <div class="card-label" style="margin-bottom:8px;">모드 소개 <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— 카드를 클릭해 자세히 보기</span></div>
+          <div class="mode-grid" id="modeGrid">
             <div class="mode-card" onclick="toggleMode(this)">
-              <div class="mode-card-head">
-                <div class="mode-card-left">
-                  <span class="mode-card-emoji">💻</span>
-                  <span class="mode-card-name">Code 모드</span>
-                </div>
-                <span class="mode-card-arrow">›</span>
+              <div class="mode-card-row">
+                <span class="mode-card-emoji">💻</span>
+                <span class="mode-card-name">Code 모드</span>
+                <span class="mode-badge">기본 모드</span>
               </div>
-              <div class="mode-card-body">
-                <div class="mode-card-body-inner">
-                  <div class="mode-card-desc">코드 작성·수정 전문 모드입니다. 파일을 직접 열고 수정하며, 터미널 명령도 실행합니다. 대부분의 코딩 작업에서 사용하는 기본 모드입니다.</div>
-                  <span class="mode-badge">기본 모드</span>
-                </div>
-              </div>
+              <div class="mode-card-detail">파일 직접 수정·터미널 실행. 대부분의 코딩 작업에서 사용</div>
+              <div class="mode-card-shrunk-label">Code</div>
             </div>
             <div class="mode-card" onclick="toggleMode(this)">
-              <div class="mode-card-head">
-                <div class="mode-card-left">
-                  <span class="mode-card-emoji">🏗️</span>
-                  <span class="mode-card-name">Architect 모드</span>
-                </div>
-                <span class="mode-card-arrow">›</span>
+              <div class="mode-card-row">
+                <span class="mode-card-emoji">🏗️</span>
+                <span class="mode-card-name">Architect 모드</span>
+                <span class="mode-badge">설계 전용</span>
               </div>
-              <div class="mode-card-body">
-                <div class="mode-card-body-inner">
-                  <div class="mode-card-desc">전체 구조 설계·계획 단계에서 사용합니다. 코드를 바로 수정하지 않고, 어떻게 만들지 먼저 큰 그림을 잡을 때 적합합니다.</div>
-                  <span class="mode-badge">설계 전용</span>
-                </div>
-              </div>
+              <div class="mode-card-detail">코드 수정 없이 전체 구조 설계. 큰 그림을 잡을 때 사용</div>
+              <div class="mode-card-shrunk-label">Arch</div>
             </div>
             <div class="mode-card" onclick="toggleMode(this)">
-              <div class="mode-card-head">
-                <div class="mode-card-left">
-                  <span class="mode-card-emoji">💬</span>
-                  <span class="mode-card-name">Ask 모드</span>
-                </div>
-                <span class="mode-card-arrow">›</span>
+              <div class="mode-card-row">
+                <span class="mode-card-emoji">💬</span>
+                <span class="mode-card-name">Ask 모드</span>
+                <span class="mode-badge">읽기 전용</span>
               </div>
-              <div class="mode-card-body">
-                <div class="mode-card-body-inner">
-                  <div class="mode-card-desc">코드를 수정하지 않고 질문·설명만 원할 때 사용합니다. "이 코드가 뭐 하는 거야?"처럼 이해가 필요할 때 적합합니다.</div>
-                  <span class="mode-badge">읽기 전용</span>
-                </div>
-              </div>
+              <div class="mode-card-detail">코드 수정 없이 질문·설명만. 이해가 필요할 때 적합</div>
+              <div class="mode-card-shrunk-label">Ask</div>
             </div>
           </div>
 
-          <div class="card-label" style="margin-bottom:8px;">실전 팁 5가지 <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— 클릭해서 열기</span></div>
-          <div class="tip-list">
-            <div class="tip-item" onclick="toggleTip(this)">
-              <div class="tip-header">
-                <div class="tip-header-left"><span class="tip-star">★</span><span class="tip-title">구체적으로 요청하기</span></div>
-                <span class="tip-arrow">›</span>
-              </div>
-              <div class="tip-body">
-                <div class="tip-body-inner">
-                  <div class="tip-examples">
-                    <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"코드 고쳐줘"</span></div>
-                    <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"3번째 줄에서 나는 TypeError: NoneType 오류를 고쳐줘"</span></div>
-                  </div>
-                </div>
+          <!-- Tips — single trigger button -->
+          <div class="card-label" style="margin-bottom:8px;">실전 팁</div>
+          <button class="tips-trigger" onclick="openTips()">
+            <div class="tips-trigger-left">
+              <span class="tips-trigger-icon">📌</span>
+              <div>
+                <div class="tips-trigger-title">실전 팁 5가지</div>
+                <div class="tips-trigger-sub">구체적 요청 · @파일명 · 단계 분리 · 커스텀 모드 · 안전하게 시도</div>
               </div>
             </div>
-            <div class="tip-item" onclick="toggleTip(this)">
-              <div class="tip-header">
-                <div class="tip-header-left"><span class="tip-star">★★</span><span class="tip-title">@파일명으로 컨텍스트 잡기 (가장 중요)</span></div>
-                <span class="tip-arrow">›</span>
-              </div>
-              <div class="tip-body">
-                <div class="tip-body-inner">
-                  <div class="tip-examples">
-                    <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"함수 수정해줘" (어떤 파일인지 모름)</span></div>
-                    <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"@utils.py 안에 있는 parse_date 함수 수정해줘"</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="tip-item" onclick="toggleTip(this)">
-              <div class="tip-header">
-                <div class="tip-header-left"><span class="tip-title">단계별로 나누기</span></div>
-                <span class="tip-arrow">›</span>
-              </div>
-              <div class="tip-body">
-                <div class="tip-body-inner">
-                  <div class="tip-examples">
-                    <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"전체 프로젝트 리팩토링해줘" (너무 광범위)</span></div>
-                    <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"먼저 data_loader.py만 정리해줘, 그다음 model.py 할게"</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="tip-item" onclick="toggleTip(this)">
-              <div class="tip-header">
-                <div class="tip-header-left"><span class="tip-title">커스텀 모드 만들기</span></div>
-                <span class="tip-arrow">›</span>
-              </div>
-              <div class="tip-body">
-                <div class="tip-body-inner">
-                  <div class="tip-plain">자주 쓰는 작업 스타일을 모드로 저장할 수 있습니다. 예: "우리 팀 코딩 컨벤션 적용 모드" — 매번 설명 없이 바로 그 스타일로 작업합니다.</div>
-                </div>
-              </div>
-            </div>
-            <div class="tip-item tip-safe" onclick="toggleTip(this)">
-              <div class="tip-header">
-                <div class="tip-header-left"><span class="tip-title">실수해도 괜찮다 ✅</span></div>
-                <span class="tip-arrow">›</span>
-              </div>
-              <div class="tip-body">
-                <div class="tip-body-inner">
-                  <div class="tip-plain" style="color:var(--green);">Approve 전엔 아무것도 바뀌지 않습니다. 미리보기를 보고 마음에 안 들면 Reject하면 됩니다.</div>
-                </div>
-              </div>
-            </div>
-          </div>
+            <span class="tips-trigger-cta">전체 보기 →</span>
+          </button>
         </div>
       </div>
 
@@ -1083,21 +1063,77 @@
   });
 
   function toggleMode(card) {
-    const isActive = card.classList.contains('active');
-    card.closest('.mode-grid').querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
-    if (!isActive) card.classList.add('active');
+    const cards = [...card.closest('.mode-grid').querySelectorAll('.mode-card')];
+    const wasActive = card.classList.contains('active');
+    cards.forEach(c => c.classList.remove('active', 'shrunk'));
+    if (!wasActive) {
+      card.classList.add('active');
+      cards.filter(c => c !== card).forEach(c => c.classList.add('shrunk'));
+    }
   }
 
-  function toggleTip(item) {
-    item.classList.toggle('open');
+  function openTips() {
+    document.getElementById('tipsOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
   }
+  function closeTips() {
+    document.getElementById('tipsOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeTips(); return; }
+    if (document.getElementById('tipsOverlay').classList.contains('open')) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
 
   let tx = 0;
   document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
   document.addEventListener('touchend',   e => {
+    if (document.getElementById('tipsOverlay').classList.contains('open')) return;
     const dx = e.changedTouches[0].clientX - tx;
     if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
   }, { passive: true });
 </script>
+
+<!-- Tips full-screen overlay -->
+<div class="tips-overlay" id="tipsOverlay">
+  <div class="tips-overlay-header">
+    <div class="tips-overlay-title">📌 실전 팁 5가지</div>
+    <button class="tips-close-btn" onclick="closeTips()">✕ 닫기</button>
+  </div>
+  <div class="tips-overlay-body">
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-star">★</span><span class="tip-full-title">구체적으로 요청하기</span></div>
+      <div class="tip-examples">
+        <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"코드 고쳐줘"</span></div>
+        <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"3번째 줄에서 나는 TypeError: NoneType 오류를 고쳐줘"</span></div>
+      </div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-star">★★</span><span class="tip-full-title">@파일명으로 컨텍스트 잡기 (가장 중요)</span></div>
+      <div class="tip-examples">
+        <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"함수 수정해줘" (어떤 파일인지 모름)</span></div>
+        <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"@utils.py 안에 있는 parse_date 함수 수정해줘"</span></div>
+      </div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-full-title">단계별로 나누기</span></div>
+      <div class="tip-examples">
+        <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"전체 프로젝트 리팩토링해줘" (너무 광범위)</span></div>
+        <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"먼저 data_loader.py만 정리해줘, 그다음 model.py 할게"</span></div>
+      </div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-full-title">커스텀 모드 만들기</span></div>
+      <div class="tip-plain">자주 쓰는 작업 스타일을 모드로 저장할 수 있습니다.<br>예: "우리 팀 코딩 컨벤션 적용 모드" — 매번 설명 없이 바로 그 스타일로 작업합니다.</div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-full-title">실수해도 괜찮다 ✅</span></div>
+      <div class="tip-plain" style="color:var(--green);font-weight:600;">Approve 전엔 아무것도 바뀌지 않습니다. 미리보기를 보고 마음에 안 들면 Reject하면 됩니다.</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
