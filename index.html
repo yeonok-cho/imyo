@@ -228,25 +228,84 @@
     .step-badge { display: inline-block; margin-top: 6px; font-size: .71rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--soft); border: 1px solid var(--border); color: var(--muted); }
     .kbd { background: var(--soft); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: .78rem; font-family: monospace; color: var(--text); }
 
-    /* ── Slide 8 tips ── */
-    .mode-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    .mode-tag {
-      display: flex; flex-direction: column; gap: 3px;
+    /* ── Slide 8 — Mode cards (expandable) ── */
+    .mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .mode-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 10px 14px; box-shadow: var(--shadow); flex: 1; min-width: 140px;
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      cursor: pointer; overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
     }
-    .mode-name { font-size: .82rem; font-weight: 700; }
-    .mode-desc { font-size: .75rem; color: var(--muted); }
-    .tip-list { display: flex; flex-direction: column; gap: 10px; }
-    .tip-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); }
-    .tip-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .tip-star { font-size: .75rem; font-weight: 800; color: var(--primary); background: var(--primary-bg); border: 1px solid var(--primary-br); padding: 2px 8px; border-radius: 99px; }
-    .tip-title { font-size: .88rem; font-weight: 700; }
-    .tip-examples { display: flex; flex-direction: column; gap: 5px; }
+    .mode-card:hover { border-color: var(--primary-br); }
+    .mode-card.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-bg), var(--shadow);
+    }
+    .mode-card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; gap: 8px; user-select: none;
+    }
+    .mode-card-left { display: flex; align-items: center; gap: 9px; }
+    .mode-card-emoji { font-size: 1.1rem; }
+    .mode-card-name { font-size: .87rem; font-weight: 700; }
+    .mode-card-arrow {
+      font-size: .8rem; color: var(--muted);
+      transition: transform .25s cubic-bezier(.4,0,.2,1), color .2s;
+      flex-shrink: 0; font-weight: 700;
+    }
+    .mode-card.active .mode-card-arrow { transform: rotate(90deg); color: var(--primary); }
+    .mode-card-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height .32s cubic-bezier(.4,0,.2,1);
+    }
+    .mode-card.active .mode-card-body { max-height: 160px; }
+    .mode-card-body-inner {
+      border-top: 1px solid var(--border-sm);
+      padding: 12px 16px 16px;
+    }
+    .mode-card-desc { font-size: .79rem; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+    .mode-badge {
+      display: inline-block; font-size: .7rem; font-weight: 700;
+      background: var(--primary-bg); color: var(--primary);
+      border: 1px solid var(--primary-br); padding: 2px 9px; border-radius: 99px;
+    }
+
+    /* ── Slide 8 — Tip accordion ── */
+    .tip-list { display: flex; flex-direction: column; gap: 7px; }
+    .tip-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      overflow: hidden; cursor: pointer;
+      transition: border-color .2s;
+    }
+    .tip-item:hover { border-color: var(--primary-br); }
+    .tip-item.open { border-color: var(--primary); }
+    .tip-item.tip-safe { border-color: var(--green-br); }
+    .tip-item.tip-safe.open { border-color: var(--green); }
+    .tip-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; gap: 8px; user-select: none;
+    }
+    .tip-header-left { display: flex; align-items: center; gap: 8px; }
+    .tip-star { font-size: .72rem; font-weight: 800; color: var(--primary); background: var(--primary-bg); border: 1px solid var(--primary-br); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
+    .tip-title { font-size: .86rem; font-weight: 700; }
+    .tip-arrow {
+      font-size: .8rem; color: var(--muted); font-weight: 700; flex-shrink: 0;
+      transition: transform .25s cubic-bezier(.4,0,.2,1), color .2s;
+    }
+    .tip-item.open .tip-arrow { transform: rotate(90deg); color: var(--primary); }
+    .tip-item.tip-safe.open .tip-arrow { color: var(--green); }
+    .tip-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height .32s cubic-bezier(.4,0,.2,1);
+    }
+    .tip-item.open .tip-body { max-height: 160px; }
+    .tip-body-inner { border-top: 1px solid var(--border-sm); padding: 12px 16px 14px; }
+    .tip-examples { display: flex; flex-direction: column; gap: 6px; }
     .tip-ex { display: flex; align-items: flex-start; gap: 8px; font-size: .8rem; line-height: 1.45; }
     .tip-ex-good { color: var(--green); font-weight: 700; flex-shrink: 0; }
     .tip-ex-bad  { color: var(--red);   font-weight: 700; flex-shrink: 0; }
-    .tip-plain { font-size: .8rem; color: var(--muted); line-height: 1.5; margin-top: 4px; }
+    .tip-plain { font-size: .8rem; color: var(--muted); line-height: 1.55; }
 
     /* ── Slide 8 flow ── */
     .usage-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
@@ -300,7 +359,7 @@
       .three-col, .grid-3 { grid-template-columns: 1fr; }
       .grid-2 { grid-template-columns: 1fr; }
       .usage-flow { grid-template-columns: 1fr 1fr; }
-      .mode-row { flex-direction: column; }
+      .mode-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 480px) {
       .hero-name { font-size: 3rem; }
@@ -757,43 +816,120 @@
             </div>
           </div>
 
-          <div class="card-label">모드 소개</div>
-          <div class="mode-row">
-            <div class="mode-tag"><span class="mode-name">Code 모드</span><span class="mode-desc">코드 작성·수정 전문, 기본 모드</span></div>
-            <div class="mode-tag"><span class="mode-name">Architect 모드</span><span class="mode-desc">전체 구조 설계·계획 단계에서 사용</span></div>
-            <div class="mode-tag"><span class="mode-name">Ask 모드</span><span class="mode-desc">코드 수정 없이 질문·설명만 원할 때</span></div>
+          <div class="card-label" style="margin-bottom:8px;">모드 소개 <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— 클릭해서 자세히 보기</span></div>
+          <div class="mode-grid">
+            <div class="mode-card" onclick="toggleMode(this)">
+              <div class="mode-card-head">
+                <div class="mode-card-left">
+                  <span class="mode-card-emoji">💻</span>
+                  <span class="mode-card-name">Code 모드</span>
+                </div>
+                <span class="mode-card-arrow">›</span>
+              </div>
+              <div class="mode-card-body">
+                <div class="mode-card-body-inner">
+                  <div class="mode-card-desc">코드 작성·수정 전문 모드입니다. 파일을 직접 열고 수정하며, 터미널 명령도 실행합니다. 대부분의 코딩 작업에서 사용하는 기본 모드입니다.</div>
+                  <span class="mode-badge">기본 모드</span>
+                </div>
+              </div>
+            </div>
+            <div class="mode-card" onclick="toggleMode(this)">
+              <div class="mode-card-head">
+                <div class="mode-card-left">
+                  <span class="mode-card-emoji">🏗️</span>
+                  <span class="mode-card-name">Architect 모드</span>
+                </div>
+                <span class="mode-card-arrow">›</span>
+              </div>
+              <div class="mode-card-body">
+                <div class="mode-card-body-inner">
+                  <div class="mode-card-desc">전체 구조 설계·계획 단계에서 사용합니다. 코드를 바로 수정하지 않고, 어떻게 만들지 먼저 큰 그림을 잡을 때 적합합니다.</div>
+                  <span class="mode-badge">설계 전용</span>
+                </div>
+              </div>
+            </div>
+            <div class="mode-card" onclick="toggleMode(this)">
+              <div class="mode-card-head">
+                <div class="mode-card-left">
+                  <span class="mode-card-emoji">💬</span>
+                  <span class="mode-card-name">Ask 모드</span>
+                </div>
+                <span class="mode-card-arrow">›</span>
+              </div>
+              <div class="mode-card-body">
+                <div class="mode-card-body-inner">
+                  <div class="mode-card-desc">코드를 수정하지 않고 질문·설명만 원할 때 사용합니다. "이 코드가 뭐 하는 거야?"처럼 이해가 필요할 때 적합합니다.</div>
+                  <span class="mode-badge">읽기 전용</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="card-label">실전 팁 5가지</div>
+          <div class="card-label" style="margin-bottom:8px;">실전 팁 5가지 <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— 클릭해서 열기</span></div>
           <div class="tip-list">
-            <div class="tip-item">
-              <div class="tip-header"><span class="tip-star">★</span><span class="tip-title">구체적으로 요청하기</span></div>
-              <div class="tip-examples">
-                <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"코드 고쳐줘"</span></div>
-                <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"3번째 줄에서 나는 TypeError: NoneType 오류를 고쳐줘"</span></div>
+            <div class="tip-item" onclick="toggleTip(this)">
+              <div class="tip-header">
+                <div class="tip-header-left"><span class="tip-star">★</span><span class="tip-title">구체적으로 요청하기</span></div>
+                <span class="tip-arrow">›</span>
+              </div>
+              <div class="tip-body">
+                <div class="tip-body-inner">
+                  <div class="tip-examples">
+                    <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"코드 고쳐줘"</span></div>
+                    <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"3번째 줄에서 나는 TypeError: NoneType 오류를 고쳐줘"</span></div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="tip-item">
-              <div class="tip-header"><span class="tip-star">★★</span><span class="tip-title">@파일명으로 컨텍스트 잡기 (가장 중요)</span></div>
-              <div class="tip-examples">
-                <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"함수 수정해줘" (어떤 파일인지 모름)</span></div>
-                <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"@utils.py 안에 있는 parse_date 함수 수정해줘"</span></div>
+            <div class="tip-item" onclick="toggleTip(this)">
+              <div class="tip-header">
+                <div class="tip-header-left"><span class="tip-star">★★</span><span class="tip-title">@파일명으로 컨텍스트 잡기 (가장 중요)</span></div>
+                <span class="tip-arrow">›</span>
+              </div>
+              <div class="tip-body">
+                <div class="tip-body-inner">
+                  <div class="tip-examples">
+                    <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"함수 수정해줘" (어떤 파일인지 모름)</span></div>
+                    <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"@utils.py 안에 있는 parse_date 함수 수정해줘"</span></div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="tip-item">
-              <div class="tip-header"><span class="tip-title">단계별로 나누기</span></div>
-              <div class="tip-examples">
-                <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"전체 프로젝트 리팩토링해줘" (너무 광범위)</span></div>
-                <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"먼저 data_loader.py만 정리해줘, 그다음 model.py 할게"</span></div>
+            <div class="tip-item" onclick="toggleTip(this)">
+              <div class="tip-header">
+                <div class="tip-header-left"><span class="tip-title">단계별로 나누기</span></div>
+                <span class="tip-arrow">›</span>
+              </div>
+              <div class="tip-body">
+                <div class="tip-body-inner">
+                  <div class="tip-examples">
+                    <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"전체 프로젝트 리팩토링해줘" (너무 광범위)</span></div>
+                    <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"먼저 data_loader.py만 정리해줘, 그다음 model.py 할게"</span></div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="tip-item">
-              <div class="tip-header"><span class="tip-title">커스텀 모드 만들기</span></div>
-              <div class="tip-plain">자주 쓰는 작업 스타일을 모드로 저장할 수 있습니다. 예: "우리 팀 코딩 컨벤션 적용 모드" — 매번 설명 없이 바로 그 스타일로 작업합니다.</div>
+            <div class="tip-item" onclick="toggleTip(this)">
+              <div class="tip-header">
+                <div class="tip-header-left"><span class="tip-title">커스텀 모드 만들기</span></div>
+                <span class="tip-arrow">›</span>
+              </div>
+              <div class="tip-body">
+                <div class="tip-body-inner">
+                  <div class="tip-plain">자주 쓰는 작업 스타일을 모드로 저장할 수 있습니다. 예: "우리 팀 코딩 컨벤션 적용 모드" — 매번 설명 없이 바로 그 스타일로 작업합니다.</div>
+                </div>
+              </div>
             </div>
-            <div class="tip-item" style="border-color:var(--green-br);">
-              <div class="tip-header"><span class="tip-title">실수해도 괜찮다 ✅</span></div>
-              <div class="tip-plain" style="color:var(--green);">Approve 전엔 아무것도 바뀌지 않습니다. 미리보기를 보고 마음에 안 들면 Reject하면 됩니다.</div>
+            <div class="tip-item tip-safe" onclick="toggleTip(this)">
+              <div class="tip-header">
+                <div class="tip-header-left"><span class="tip-title">실수해도 괜찮다 ✅</span></div>
+                <span class="tip-arrow">›</span>
+              </div>
+              <div class="tip-body">
+                <div class="tip-body-inner">
+                  <div class="tip-plain" style="color:var(--green);">Approve 전엔 아무것도 바뀌지 않습니다. 미리보기를 보고 마음에 안 들면 Reject하면 됩니다.</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -945,6 +1081,16 @@
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
     if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
   });
+
+  function toggleMode(card) {
+    const isActive = card.classList.contains('active');
+    card.closest('.mode-grid').querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+    if (!isActive) card.classList.add('active');
+  }
+
+  function toggleTip(item) {
+    item.classList.toggle('open');
+  }
 
   let tx = 0;
   document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
