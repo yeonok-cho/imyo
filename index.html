@@ -196,6 +196,20 @@
     .tag-name { font-size: .82rem; font-weight: 700; color: var(--text); }
     .tag-desc { font-size: .72rem; color: var(--muted); }
 
+    /* ── Home (paw) button ── */
+    .paw-btn {
+      position: fixed; bottom: 50px; right: 18px; z-index: 300;
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--surface); border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: grid; place-items: center;
+      font-size: 1.1rem; cursor: pointer;
+      opacity: 0.22; transition: opacity .2s, transform .18s, box-shadow .18s;
+      line-height: 1;
+    }
+    .paw-btn:hover { opacity: 0.75; transform: scale(1.12); box-shadow: 0 4px 14px rgba(0,0,0,.13); }
+    .paw-btn.hidden { opacity: 0; pointer-events: none; }
+
     /* ── Slide 2 LLM ── */
     .three-col { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
     .col-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); display: grid; grid-template-columns: auto 1fr; gap: 0 16px; align-items: start; }
@@ -492,20 +506,32 @@
           </div>
 
           <div class="tag-row">
-            <div class="tag-item" onclick="goto(1)" title="→ 슬라이드 2: LLM 개념">
-              <span class="tag-name">LLM</span><span class="tag-desc">대규모 언어 모델, ChatGPT의 두뇌</span>
+            <div class="tag-item" onclick="goto(1)">
+              <span class="tag-name">AI의 두뇌 LLM</span><span class="tag-desc">언어를 이해하고 생성하는 원리</span>
             </div>
-            <div class="tag-item" onclick="goto(4)" title="→ 슬라이드 5: Roo 소개">
-              <span class="tag-name">AI 에이전트</span><span class="tag-desc">대화를 넘어 직접 행동하는 AI</span>
+            <div class="tag-item" onclick="goto(2)">
+              <span class="tag-name">서비스 비교</span><span class="tag-desc">ChatGPT·Claude·Gemini·Roo 한눈에</span>
             </div>
-            <div class="tag-item" onclick="goto(6)" title="→ 슬라이드 7: 설치 방법">
-              <span class="tag-name">오픈소스</span><span class="tag-desc">누구나 무료로 쓰고 개선할 수 있는 소프트웨어</span>
+            <div class="tag-item" onclick="goto(3)">
+              <span class="tag-name">웹 AI의 한계</span><span class="tag-desc">복붙 없이 파일을 직접 고쳐준다면?</span>
             </div>
-            <div class="tag-item" onclick="goto(6)" title="→ 슬라이드 7: 설치 방법">
-              <span class="tag-name">VS Code</span><span class="tag-desc">전 세계 개발자가 가장 많이 쓰는 코드 편집기</span>
+            <div class="tag-item" onclick="goto(4)">
+              <span class="tag-name">Roo 에이전트</span><span class="tag-desc">파일 읽기·쓰기·터미널 직접 실행</span>
             </div>
-            <div class="tag-item" onclick="goto(4)" title="→ 슬라이드 5: Roo 소개">
-              <span class="tag-name">로컬 실행</span><span class="tag-desc">내 PC 안에서만 동작, 외부 서버 전송 없음</span>
+            <div class="tag-item" onclick="goto(5)">
+              <span class="tag-name">언제 쓸까</span><span class="tag-desc">웹 AI vs Roo, 상황별 선택 기준</span>
+            </div>
+            <div class="tag-item" onclick="goto(6)">
+              <span class="tag-name">4단계 설치</span><span class="tag-desc">VS Code + API 키, 10분이면 충분</span>
+            </div>
+            <div class="tag-item" onclick="goto(7)">
+              <span class="tag-name">실전 팁</span><span class="tag-desc">처음 5분, 이것만 알면 됩니다</span>
+            </div>
+            <div class="tag-item" onclick="goto(8)">
+              <span class="tag-name">실제 시나리오</span><span class="tag-desc">현업에서 Roo를 쓰는 7가지 사례</span>
+            </div>
+            <div class="tag-item" onclick="goto(9)">
+              <span class="tag-name">핵심 정리</span><span class="tag-desc">대화 → 실행 → 완성, 오늘부터</span>
             </div>
           </div>
         </div>
@@ -1070,6 +1096,8 @@
   </div><!-- /slides-viewport -->
 
   <footer class="bottombar" id="dots"></footer>
+
+  <button class="paw-btn hidden" id="pawBtn" onclick="goto(0)" title="처음으로">🐾</button>
 </div>
 
 <script>
@@ -1089,6 +1117,8 @@
     dotsEl.appendChild(d);
   }
 
+  const pawBtn = document.getElementById('pawBtn');
+
   function revealHero() {
     document.getElementById('heroDesc2').classList.add('revealed');
     document.getElementById('heroPresenter').classList.add('revealed');
@@ -1102,6 +1132,7 @@
     prevBtn.disabled = cur === 0;
     nextBtn.disabled = cur === TOTAL - 1;
     dotsEl.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === cur));
+    pawBtn.classList.toggle('hidden', cur === 0);
   }
 
   function go(dir) { goto(cur + dir); }
