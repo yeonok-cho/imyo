@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roo — AI와 함께 일하는 새로운 방법</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #FAFAF8;
+      --surface:   #FFFFFF;
+      --border:    #E8E4DE;
+      --border-sm: #F0EDE8;
+      --primary:   #D97757;
+      --primary-h: #C4623E;
+      --primary-bg:#FDF3EE;
+      --primary-br:#F9D5C3;
+      --text:      #1C1917;
+      --muted:     #78716C;
+      --soft:      #F5F2EE;
+      --green:     #16A34A;
+      --green-bg:  #DCFCE7;
+      --green-br:  #BBF7D0;
+      --red:       #DC2626;
+      --red-bg:    #FEE2E2;
+      --blue:      #2563EB;
+      --blue-bg:   #EFF6FF;
+      --blue-br:   #BFDBFE;
+      --radius:    12px;
+      --radius-sm: 8px;
+      --shadow:    0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Layout ── */
+    .pres { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+    /* ── Top bar ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0; gap: 16px;
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 1rem; color: var(--text); letter-spacing: -.02em;
+    }
+    .brand-dot {
+      width: 28px; height: 28px; background: var(--primary); border-radius: 7px;
+      display: grid; place-items: center; color: #fff; font-size: .75rem; font-weight: 800;
+    }
+    .topbar-progress-wrap { flex: 1; max-width: 320px; display: flex; flex-direction: column; gap: 4px; }
+    .progress-label { font-size: .72rem; color: var(--muted); text-align: right; }
+    .progress-bar-bg { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill {
+      height: 100%; background: var(--primary); border-radius: 99px;
+      transition: width .35s cubic-bezier(.4,0,.2,1);
+    }
+    .topbar-nav { display: flex; gap: 8px; }
+    .nav-btn {
+      width: 34px; height: 34px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); cursor: pointer; display: grid; place-items: center;
+      color: var(--muted); transition: all .15s; font-size: .9rem;
+    }
+    .nav-btn:hover:not(:disabled) { background: var(--soft); border-color: var(--primary); color: var(--primary); }
+    .nav-btn:disabled { opacity: .35; cursor: default; }
+
+    /* ── Slides viewport ── */
+    .slides-viewport { flex: 1; overflow: hidden; position: relative; }
+    .slides-track { display: flex; height: 100%; transition: transform .4s cubic-bezier(.4,0,.2,1); }
+    .slide {
+      min-width: 100%; height: 100%; overflow: hidden;
+      padding: 28px 28px 16px; display: flex; align-items: flex-start; justify-content: center;
+    }
+    .slide-inner { width: 100%; max-width: 840px; }
+
+    /* ── Bottom dots ── */
+    .bottombar {
+      display: flex; justify-content: center; align-items: center; gap: 8px;
+      padding: 13px; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--border); cursor: pointer; transition: all .2s; }
+    .dot.active { background: var(--primary); width: 22px; }
+
+    /* ── Common ── */
+    .slide-num {
+      display: inline-block; font-size: .7rem; font-weight: 700; color: var(--primary);
+      background: var(--primary-bg); border: 1px solid var(--primary-br);
+      padding: 3px 10px; border-radius: 99px; margin-bottom: 18px;
+      letter-spacing: .05em; text-transform: uppercase;
+    }
+    .slide-title {
+      font-size: clamp(1.5rem, 3.5vw, 2.2rem); font-weight: 800;
+      letter-spacing: -.04em; line-height: 1.15; color: var(--text); margin-bottom: 6px;
+    }
+    .slide-sub { font-size: clamp(.85rem, 1.8vw, .98rem); color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; box-shadow: var(--shadow); }
+    .card + .card { margin-top: 10px; }
+    .card-label { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    .highlight-box {
+      background: var(--primary-bg); border: 1px solid var(--primary-br);
+      border-radius: var(--radius-sm); padding: 14px 18px;
+      font-size: .87rem; color: var(--primary); line-height: 1.55;
+    }
+    .highlight-box strong { font-weight: 700; }
+    .info-box {
+      background: var(--blue-bg); border: 1px solid var(--blue-br);
+      border-radius: var(--radius-sm); padding: 13px 16px;
+      font-size: .82rem; color: var(--blue); line-height: 1.55;
+    }
+
+    /* ── Grid layouts ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    /* ── Feature cards ── */
+    .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+    .feature-icon { width: 34px; height: 34px; background: var(--soft); border-radius: 9px; display: grid; place-items: center; font-size: 1rem; margin-bottom: 10px; }
+    .feature-title { font-size: .88rem; font-weight: 700; margin-bottom: 4px; }
+    .feature-desc { font-size: .78rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── Table ── */
+    .tbl-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .cmp-table th {
+      text-align: left; padding: 10px 13px; background: var(--soft);
+      border-bottom: 1px solid var(--border); font-weight: 700; color: var(--muted);
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+    }
+    .cmp-table td {
+      padding: 10px 13px; border-bottom: 1px solid var(--border-sm);
+      vertical-align: top; line-height: 1.45; color: var(--text);
+    }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    .cmp-table tr:hover td { background: var(--soft); }
+    .cmp-table td:first-child { font-weight: 600; color: var(--muted); white-space: nowrap; width: 80px; }
+    .cmp-table td.roo-col { background: #FFFBF9; font-weight: 500; }
+    .cmp-table th.roo-col { background: var(--primary-bg); color: var(--primary); }
+    .pill { display: inline-flex; align-items: center; gap: 4px; font-size: .75rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+    .pill-green { background: var(--green-bg); color: var(--green); }
+    .pill-red   { background: var(--red-bg); color: var(--red); }
+    .pill-muted { background: var(--soft); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── Slide 1 hero ── */
+    .hero-name { font-size: clamp(3.5rem, 10vw, 6rem); font-weight: 900; letter-spacing: -.07em; line-height: 1; color: var(--text); margin-bottom: 12px; }
+    .hero-accent { color: var(--primary); }
+    .hero-subtitle { font-size: clamp(1rem, 2.5vw, 1.2rem); font-weight: 600; color: var(--text); margin-bottom: 8px; letter-spacing: -.02em; }
+    .hero-desc { font-size: clamp(.85rem, 1.8vw, .95rem); color: var(--muted); line-height: 1.7; max-width: 580px; margin-bottom: 14px; }
+    /* Slide 1 — click-reveal animation */
+    .hero-desc-1 {
+      cursor: pointer; user-select: none; display: flex; align-items: baseline; gap: 8px;
+    }
+    .hero-desc-1:hover .hero-hint { opacity: 1; }
+    .hero-hint {
+      font-size: .75rem; color: var(--primary); font-style: normal;
+      opacity: .45; transition: opacity .2s; flex-shrink: 0;
+    }
+    .hero-desc-2 {
+      max-height: 0; overflow: hidden; opacity: 0; margin-bottom: 0;
+      transition: max-height .5s cubic-bezier(.4,0,.2,1), opacity .35s .1s, margin-bottom .4s;
+    }
+    .hero-desc-2.revealed { max-height: 60px; opacity: 1; margin-bottom: 14px; }
+    .hero-presenter {
+      display: flex; justify-content: flex-end;
+      margin-bottom: 20px;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity .4s .15s, transform .4s .15s;
+    }
+    .hero-presenter.revealed { opacity: 1; transform: translateY(0); }
+    .hero-presenter-inner {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--soft); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 14px;
+      font-size: .82rem; color: var(--muted); font-weight: 500;
+    }
+    .hero-presenter strong { color: var(--text); font-weight: 700; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag-item {
+      display: flex; flex-direction: column; gap: 2px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      box-shadow: var(--shadow);
+      cursor: pointer; transition: border-color .18s, box-shadow .18s;
+    }
+    .tag-item:hover { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-bg), var(--shadow); }
+    .tag-name { font-size: .82rem; font-weight: 700; color: var(--text); }
+    .tag-desc { font-size: .72rem; color: var(--muted); }
+
+    /* ── Home (paw) button ── */
+    .paw-btn {
+      position: fixed; bottom: 50px; right: 18px; z-index: 300;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--surface); border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: grid; place-items: center;
+      font-size: 1.15rem; cursor: pointer;
+      opacity: 0; pointer-events: none;
+      transition: opacity .35s, transform .18s, box-shadow .18s;
+      line-height: 1;
+    }
+    .paw-btn.visible { opacity: 0.28; pointer-events: auto; animation: pawBounce 1.6s ease-in-out infinite; }
+    .paw-btn.visible:hover { opacity: 0.8; transform: scale(1.15); box-shadow: 0 4px 14px rgba(0,0,0,.15); animation: none; }
+    @keyframes pawBounce {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-4px); }
+    }
+
+    /* ── Slide 2 LLM ── */
+    .three-col { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 20px; }
+    .col-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); display: grid; grid-template-columns: auto 1fr; gap: 0 16px; align-items: start; }
+    .col-card-num { font-size: .92rem; font-weight: 800; color: var(--primary); margin-bottom: 0; letter-spacing: 0; text-transform: none; padding-top: 1px; }
+    .col-card-title { font-size: .92rem; font-weight: 700; margin-bottom: 6px; }
+    .col-card-desc { grid-column: 2; }
+    .col-card-desc { font-size: .8rem; color: var(--muted); line-height: 1.6; }
+    .limit-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .limit-item { display: flex; align-items: flex-start; gap: 6px; font-size: .78rem; color: var(--muted); line-height: 1.45; }
+    .limit-item::before { content: '·'; color: var(--red); font-weight: 900; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Slide 4 Story ── */
+    .story-box {
+      background: var(--soft); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 24px; margin-bottom: 20px;
+    }
+    .story-quote { font-size: .88rem; color: var(--muted); font-style: italic; margin-bottom: 14px; }
+    .story-steps { display: flex; flex-direction: column; gap: 0; }
+    .story-step { display: flex; align-items: flex-start; gap: 12px; position: relative; padding-bottom: 10px; }
+    .story-step:not(:last-child)::before { content: ''; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--border); }
+    .story-step-num { width: 28px; height: 28px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; display: grid; place-items: center; font-size: .75rem; font-weight: 700; color: var(--muted); z-index: 1; }
+    .story-step-text { font-size: .83rem; color: var(--text); padding-top: 5px; line-height: 1.45; }
+    .story-step-text em { color: var(--red); font-style: normal; font-weight: 600; }
+
+    /* ── Slide 5 analogy ── */
+    .analogy-box {
+      background: var(--primary-bg); border: 1px solid var(--primary-br);
+      border-radius: var(--radius); padding: 18px 22px; margin-bottom: 22px;
+      font-size: .9rem; line-height: 1.65; color: var(--text);
+    }
+    .analogy-box strong { color: var(--primary); }
+
+    /* ── Slide 6 select table ── */
+    .select-guide {
+      margin-top: 16px;
+      background: var(--soft); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 20px;
+    }
+    .select-guide-title { font-size: .78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 12px; }
+    .select-row { display: flex; align-items: flex-start; gap: 10px; font-size: .83rem; line-height: 1.5; margin-bottom: 8px; }
+    .select-row:last-child { margin-bottom: 0; }
+    .select-arrow { color: var(--primary); font-weight: 700; flex-shrink: 0; }
+
+    /* ── Slide 7 install ── */
+    .install-steps { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
+    .install-step { display: flex; gap: 18px; position: relative; }
+    .install-step:not(:last-child)::before { content: ''; position: absolute; left: 19px; top: 40px; bottom: -4px; width: 2px; background: var(--border); }
+    .step-num { width: 40px; height: 40px; flex-shrink: 0; background: var(--primary); color: #fff; border-radius: 99px; display: grid; place-items: center; font-weight: 800; font-size: .88rem; z-index: 1; }
+    .step-body { flex: 1; padding-bottom: 22px; }
+    .step-title { font-size: .92rem; font-weight: 700; margin-bottom: 4px; }
+    .step-desc { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+    .step-desc a { color: var(--primary); text-decoration: none; }
+    .step-desc a:hover { text-decoration: underline; }
+    .step-badge { display: inline-block; margin-top: 6px; font-size: .71rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--soft); border: 1px solid var(--border); color: var(--muted); }
+    .kbd { background: var(--soft); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: .78rem; font-family: monospace; color: var(--text); }
+
+    /* ── Slide 8 — Mode cards (flex shrink/expand) ── */
+    .mode-grid {
+      display: flex; gap: 10px; margin-bottom: 14px;
+      align-items: stretch; height: 96px; /* fixed height — never expands */
+    }
+    .mode-card {
+      flex: 1; min-width: 0; overflow: hidden;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      cursor: pointer; padding: 12px 14px;
+      display: flex; flex-direction: column; justify-content: center;
+      transition: flex .38s cubic-bezier(.4,0,.2,1),
+                  border-color .2s, box-shadow .2s;
+    }
+    .mode-card:hover { border-color: var(--primary-br); }
+    .mode-card.active {
+      flex: 2.8;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-bg), var(--shadow);
+    }
+    .mode-card.shrunk {
+      flex: 0 0 58px; padding: 12px 6px;
+      align-items: center; justify-content: center;
+    }
+    /* top row: emoji + name + optional badge */
+    .mode-card-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .mode-card-emoji { font-size: 1rem; flex-shrink: 0; }
+    .mode-card-name {
+      font-size: .85rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+      transition: opacity .2s;
+    }
+    .mode-card.shrunk .mode-card-name { display: none; }
+    .mode-badge {
+      font-size: .67rem; font-weight: 700;
+      background: var(--primary-bg); color: var(--primary);
+      border: 1px solid var(--primary-br); padding: 1px 7px; border-radius: 99px;
+      flex-shrink: 0; white-space: nowrap;
+      opacity: 0; transition: opacity .2s .1s;
+    }
+    .mode-card.active .mode-badge { opacity: 1; }
+    .mode-card.shrunk .mode-badge { display: none; }
+    /* description — visible only when active, within fixed height */
+    .mode-card-detail {
+      font-size: .74rem; color: var(--muted); line-height: 1.4;
+      margin-top: 5px;
+      max-height: 0; overflow: hidden; opacity: 0;
+      transition: max-height .32s cubic-bezier(.4,0,.2,1), opacity .2s .1s;
+    }
+    .mode-card.active .mode-card-detail { max-height: 54px; opacity: 1; }
+    /* shrunk state: show only emoji, centered */
+    .mode-card.shrunk .mode-card-row { justify-content: center; }
+    .mode-card-shrunk-label {
+      font-size: .6rem; color: var(--muted); margin-top: 3px;
+      text-align: center; line-height: 1.2; white-space: nowrap;
+      opacity: 0; transition: opacity .2s;
+    }
+    .mode-card.shrunk .mode-card-shrunk-label { opacity: 1; }
+
+    /* ── Slide 8 — Tips trigger button ── */
+    .tips-trigger {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px;
+      cursor: pointer; box-shadow: var(--shadow);
+      transition: border-color .2s, box-shadow .2s, background .2s;
+      text-align: left;
+    }
+    .tips-trigger:hover {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-bg), var(--shadow);
+    }
+    .tips-trigger-left { display: flex; align-items: center; gap: 12px; }
+    .tips-trigger-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .tips-trigger-title { font-size: .9rem; font-weight: 700; margin-bottom: 2px; }
+    .tips-trigger-sub { font-size: .74rem; color: var(--muted); }
+    .tips-trigger-cta {
+      font-size: .82rem; font-weight: 700; color: var(--primary);
+      white-space: nowrap; flex-shrink: 0;
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    /* ── Tips full-screen overlay ── */
+    .tips-overlay {
+      position: fixed; inset: 0; z-index: 400;
+      background: var(--surface);
+      display: flex; flex-direction: column;
+      transform: translateY(100%);
+      transition: transform .4s cubic-bezier(.4,0,.2,1);
+      pointer-events: none;
+    }
+    .tips-overlay.open { transform: translateY(0); pointer-events: auto; }
+    .tips-overlay-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 28px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+      background: var(--surface);
+    }
+    .tips-overlay-title { font-size: 1rem; font-weight: 800; }
+    .tips-close-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--soft);
+      cursor: pointer; font-size: .82rem; font-weight: 600; color: var(--muted);
+      transition: border-color .15s, color .15s;
+    }
+    .tips-close-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .tips-overlay-body {
+      flex: 1; overflow-y: auto; padding: 24px 28px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      align-content: start;
+    }
+    .tip-full {
+      background: var(--soft); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px;
+    }
+    .tip-full:nth-child(5) { grid-column: 1 / -1; border-color: var(--green-br); background: var(--green-bg); }
+    .tip-full-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .tip-star { font-size: .72rem; font-weight: 800; color: var(--primary); background: var(--primary-bg); border: 1px solid var(--primary-br); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
+    .tip-full-title { font-size: .9rem; font-weight: 700; }
+    .tip-examples { display: flex; flex-direction: column; gap: 6px; }
+    .tip-ex { display: flex; align-items: flex-start; gap: 8px; font-size: .8rem; line-height: 1.45; }
+    .tip-ex-good { color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .tip-ex-bad  { color: var(--red);   font-weight: 700; flex-shrink: 0; }
+    .tip-plain { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── Slide 8 flow ── */
+    .usage-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+    .usage-step { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 12px; text-align: center; box-shadow: var(--shadow); }
+    .usage-step-icon { font-size: 1.3rem; display: block; margin-bottom: 6px; }
+    .usage-step-num { display: inline-block; width: 22px; height: 22px; background: var(--primary); color: #fff; border-radius: 99px; font-size: .7rem; font-weight: 800; line-height: 22px; margin-bottom: 6px; }
+    .usage-step-text { font-size: .75rem; color: var(--muted); line-height: 1.4; }
+
+    /* ── Slide 9 scenarios ── */
+    .scenario-list { display: flex; flex-direction: column; gap: 14px; }
+    .scenario { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+    .scenario-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .scenario-icon { width: 36px; height: 36px; background: var(--soft); border-radius: 9px; display: grid; place-items: center; font-size: 1rem; flex-shrink: 0; }
+    .scenario-label { font-size: .88rem; font-weight: 700; }
+    .scenario-quote {
+      font-size: .83rem; color: var(--primary); font-weight: 600; font-style: italic;
+      background: var(--primary-bg); border-left: 3px solid var(--primary);
+      padding: 8px 12px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 10px;
+    }
+    .scenario-body { font-size: .8rem; color: var(--muted); line-height: 1.6; margin-bottom: 10px; }
+    .time-badge { display: flex; align-items: center; gap: 8px; font-size: .78rem; }
+    .time-before { background: var(--red-bg); color: var(--red); font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+    .time-after  { background: var(--green-bg); color: var(--green); font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+    .time-arrow  { color: var(--muted); font-size: .85rem; }
+
+    /* ── Slide 10 ── */
+    .checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+    .check-item { display: flex; align-items: flex-start; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow); }
+    .check-icon { width: 22px; height: 22px; flex-shrink: 0; background: var(--green-bg); border-radius: 99px; display: grid; place-items: center; color: var(--green); font-size: .72rem; margin-top: 1px; }
+    .check-text { font-size: .86rem; line-height: 1.5; }
+    .roadmap-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 16px; }
+    .roadmap-table th { text-align: left; padding: 9px 13px; background: var(--soft); border-bottom: 1px solid var(--border); font-weight: 700; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+    .roadmap-table td { padding: 10px 13px; border-bottom: 1px solid var(--border-sm); vertical-align: top; line-height: 1.45; }
+    .roadmap-table tr:last-child td { border-bottom: none; }
+    .roadmap-table td:first-child { font-weight: 700; color: var(--primary); white-space: nowrap; }
+    .ref-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .ref-item { display: flex; align-items: center; gap: 6px; background: var(--soft); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; font-size: .8rem; color: var(--muted); }
+    .ref-item strong { color: var(--text); font-weight: 700; }
+    .ref-item a { color: var(--primary); text-decoration: none; }
+    .ref-item a:hover { text-decoration: underline; }
+    .cta-box { background: var(--primary); border-radius: var(--radius); padding: 20px 26px; }
+    .cta-main { font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .cta-sub  { font-size: .83rem; color: rgba(255,255,255,.8); }
+    .qa-box { margin-top: 12px; text-align: center; font-size: .88rem; color: var(--muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .slide { padding: 20px 14px 64px; }
+      .topbar { padding: 10px 14px; }
+      .topbar-progress-wrap { display: none; }
+      .three-col, .grid-3 { grid-template-columns: 1fr; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .usage-flow { grid-template-columns: 1fr 1fr; }
+      .mode-grid { height: auto; flex-direction: column; }
+      .mode-card.shrunk { flex: unset; width: 100%; }
+      .tips-overlay-body { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .hero-name { font-size: 3rem; }
+      .tag-row { flex-direction: column; }
+    }
+    @media (min-width: 641px) and (max-width: 860px) {
+      .usage-flow { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="pres">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-dot">R</div>
+      Roo 소개
+    </div>
+    <div class="topbar-progress-wrap">
+      <div class="progress-label"><span id="cur">1</span> / 10</div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog" style="width:10%"></div></div>
+    </div>
+    <div class="topbar-nav">
+      <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#8592;</button>
+      <button class="nav-btn" id="nextBtn" onclick="go(1)">&#8594;</button>
+    </div>
+  </header>
+
+  <!-- Slides -->
+  <div class="slides-viewport">
+    <div class="slides-track" id="track">
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 1 — 타이틀
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">01 / 10 &nbsp;·&nbsp; 타이틀</div>
+          <div class="hero-name">Roo<span class="hero-accent">.</span></div>
+          <div class="hero-subtitle">AI와 함께 일하는 새로운 방법 — LLM부터 코딩 에이전트까지</div>
+
+          <p class="hero-desc hero-desc-1" onclick="revealHero()">
+            ChatGPT는 써봤는데, AI가 내 컴퓨터 파일을 직접 고쳐준다면?
+            <span class="hero-hint">클릭 →</span>
+          </p>
+          <p class="hero-desc hero-desc-2" id="heroDesc2">
+            이 발표는 AI가 어떻게 동작하는지 모르는 분도 처음부터 이해할 수 있도록 구성했습니다.
+          </p>
+
+          <div class="hero-presenter" id="heroPresenter">
+            <div class="hero-presenter-inner">
+              <span>발표자</span>
+              <strong>조연옥 / 통계기술 파트</strong>
+            </div>
+          </div>
+
+          <div class="tag-row">
+            <div class="tag-item" onclick="goto(1)">
+              <span class="tag-name">AI의 두뇌 LLM</span><span class="tag-desc">언어를 이해하고 생성하는 원리</span>
+            </div>
+            <div class="tag-item" onclick="goto(2)">
+              <span class="tag-name">서비스 비교</span><span class="tag-desc">ChatGPT·Claude·Gemini·Roo 한눈에</span>
+            </div>
+            <div class="tag-item" onclick="goto(3)">
+              <span class="tag-name">웹 AI의 한계</span><span class="tag-desc">복붙 없이 파일을 직접 고쳐준다면?</span>
+            </div>
+            <div class="tag-item" onclick="goto(4)">
+              <span class="tag-name">Roo 에이전트</span><span class="tag-desc">파일 읽기·쓰기·터미널 직접 실행</span>
+            </div>
+            <div class="tag-item" onclick="goto(5)">
+              <span class="tag-name">언제 쓸까</span><span class="tag-desc">웹 AI vs Roo, 상황별 선택 기준</span>
+            </div>
+            <div class="tag-item" onclick="goto(6)">
+              <span class="tag-name">4단계 설치</span><span class="tag-desc">VS Code + API 키, 10분이면 충분</span>
+            </div>
+            <div class="tag-item" onclick="goto(7)">
+              <span class="tag-name">실전 팁</span><span class="tag-desc">처음 5분, 이것만 알면 됩니다</span>
+            </div>
+            <div class="tag-item" onclick="goto(8)">
+              <span class="tag-name">실제 시나리오</span><span class="tag-desc">현업에서 Roo를 쓰는 7가지 사례</span>
+            </div>
+            <div class="tag-item" onclick="goto(9)">
+              <span class="tag-name">핵심 정리</span><span class="tag-desc">대화 → 실행 → 완성, 오늘부터</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 2 — LLM이 뭔가요?
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">02 / 10 &nbsp;·&nbsp; LLM 개념</div>
+          <h1 class="slide-title">AI의 두뇌, LLM이란?</h1>
+          <p class="slide-sub">Large Language Model — 대규모 언어 모델</p>
+
+          <div class="three-col">
+            <div class="col-card">
+              <div class="col-card-num">①</div>
+              <div>
+                <div class="col-card-title">어떻게 만들어졌나 — 수백억 개의 글을 읽다</div>
+                <div class="col-card-desc">
+                  인터넷의 방대한 텍스트(책, 코드, 뉴스, 논문 등)를 읽고, "다음에 올 단어가 뭘지" 반복 학습한 모델입니다.
+                  사람이 글을 읽고 패턴을 익히는 것과 비슷하지만, 규모가 수천 배 큽니다.
+                </div>
+              </div>
+            </div>
+            <div class="col-card">
+              <div class="col-card-num">②</div>
+              <div>
+                <div class="col-card-title">어떻게 동작하나 — 문맥을 이해해서 답한다</div>
+                <div class="col-card-desc">
+                  질문을 입력하면 → 학습한 패턴을 바탕으로 → 가장 자연스러운 답을 단어 하나씩 생성합니다.
+                  계산기처럼 정해진 공식이 아니라, 문맥을 이해해서 대답합니다.
+                </div>
+              </div>
+            </div>
+            <div class="col-card" style="border-color:var(--red-bg);">
+              <div class="col-card-num" style="color:var(--red);">③</div>
+              <div>
+                <div class="col-card-title">한계도 있다 — 완벽하지 않습니다</div>
+                <div class="limit-list">
+                  <div class="limit-item">학습 데이터 이후의 사실은 모름 (지식 컷오프)</div>
+                  <div class="limit-item">가끔 틀린 정보를 자신 있게 말함 (할루시네이션)</div>
+                  <div class="limit-item">기본적으로 "대화"만 가능 → 파일을 직접 바꾸진 못함</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="highlight-box">
+            💡 <strong>핵심 한 줄:</strong> LLM은 엄청나게 많은 글을 읽고 자란 "텍스트 전문가"입니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 3 — LLM 서비스 비교
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">03 / 10 &nbsp;·&nbsp; 서비스 비교</div>
+          <h1 class="slide-title">LLM, 어떤 서비스로 쓸 수 있나요?</h1>
+          <p class="slide-sub">우리가 이미 쓰고 있는 AI 서비스들과 Roo의 차이</p>
+
+          <div class="tbl-wrap" style="margin-bottom:14px;">
+            <table class="cmp-table">
+              <thead>
+                <tr>
+                  <th>항목</th>
+                  <th>ChatGPT</th>
+                  <th>Claude</th>
+                  <th>Gemini</th>
+                  <th class="roo-col">🤖 Roo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>만든 곳</td>
+                  <td>OpenAI</td>
+                  <td>Anthropic</td>
+                  <td>Google</td>
+                  <td class="roo-col">오픈소스 커뮤니티</td>
+                </tr>
+                <tr>
+                  <td>사용 모델</td>
+                  <td>GPT-4o 등</td>
+                  <td>Claude 3.5 등</td>
+                  <td>Gemini 1.5 등</td>
+                  <td class="roo-col">선택 가능 (Claude, GPT 등)</td>
+                </tr>
+                <tr>
+                  <td>무료 플랜</td>
+                  <td><span class="pill pill-green">✓ 있음</span></td>
+                  <td><span class="pill pill-green">✓ 있음</span></td>
+                  <td><span class="pill pill-green">✓ 있음</span></td>
+                  <td class="roo-col"><span class="pill pill-green">✓ 있음</span></td>
+                </tr>
+                <tr>
+                  <td>유료 구독료</td>
+                  <td>$20/월 (Plus)</td>
+                  <td>$20/월 (Pro)</td>
+                  <td>$19.99/월</td>
+                  <td class="roo-col">API 비용만 (종량제)</td>
+                </tr>
+                <tr>
+                  <td>사용 환경</td>
+                  <td>웹 브라우저</td>
+                  <td>웹 브라우저</td>
+                  <td>웹 브라우저</td>
+                  <td class="roo-col">VS Code (내 PC)</td>
+                </tr>
+                <tr>
+                  <td>파일 직접 수정</td>
+                  <td><span class="pill pill-red">✗</span></td>
+                  <td><span class="pill pill-red">✗</span></td>
+                  <td><span class="pill pill-red">✗</span></td>
+                  <td class="roo-col"><span class="pill pill-green">✓</span></td>
+                </tr>
+                <tr>
+                  <td>터미널 실행</td>
+                  <td><span class="pill pill-red">✗</span></td>
+                  <td><span class="pill pill-red">✗</span></td>
+                  <td><span class="pill pill-red">✗</span></td>
+                  <td class="roo-col"><span class="pill pill-green">✓</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="highlight-box">
+            💡 LLM은 이미 우리 모두가 쓰고 있습니다. 이제 중요한 건 <strong>어떻게 더 잘 쓰느냐</strong>입니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 4 — 웹 서비스의 한계
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">04 / 10 &nbsp;·&nbsp; 웹 서비스의 한계</div>
+          <h1 class="slide-title">ChatGPT로 코딩하면 생기는 일</h1>
+          <p class="slide-sub">실제 작업 시나리오로 살펴보겠습니다.</p>
+
+          <div class="story-box">
+            <div class="story-quote">"파이썬 스크립트 고쳐줘"라고 ChatGPT에 물어봤습니다.</div>
+            <div class="story-steps">
+              <div class="story-step">
+                <div class="story-step-num">1</div>
+                <div class="story-step-text">코드를 복사해서 붙여넣기</div>
+              </div>
+              <div class="story-step">
+                <div class="story-step-num">2</div>
+                <div class="story-step-text">답변 받기</div>
+              </div>
+              <div class="story-step">
+                <div class="story-step-num">3</div>
+                <div class="story-step-text">다시 내 파일에 복사해서 붙여넣기</div>
+              </div>
+              <div class="story-step">
+                <div class="story-step-num">4</div>
+                <div class="story-step-text">실행해보니 <em>오류 발생</em></div>
+              </div>
+              <div class="story-step">
+                <div class="story-step-num">5</div>
+                <div class="story-step-text">오류 메시지를 다시 복사해서 ChatGPT에 붙여넣기</div>
+              </div>
+              <div class="story-step">
+                <div class="story-step-num" style="background:var(--red-bg);color:var(--red);border-color:var(--red-bg);">∞</div>
+                <div class="story-step-text"><em>반복…</em></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="feature-card">
+              <div class="feature-icon">🔁</div>
+              <div class="feature-title">복붙의 굴레</div>
+              <div class="feature-desc">코드를 올리고 → 답 받고 → 다시 파일에 넣는 과정을 매번 반복해야 합니다. 파일이 10개라면 10번 반복입니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🕶️</div>
+              <div class="feature-title">프로젝트 전체를 모른다</div>
+              <div class="feature-desc">웹 서비스는 지금 붙여넣은 코드만 봅니다. "다른 파일이랑 연결이 안 돼요"라는 문제는 AI가 알 수 없습니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🖐️</div>
+              <div class="feature-title">실행은 내가 직접</div>
+              <div class="feature-desc">AI가 "이렇게 해보세요"라고 알려줘도, 터미널을 열어서 명령어를 치는 건 여전히 내 몫입니다.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div class="highlight-box">
+              💡 <strong>핵심 한 줄:</strong> 웹 AI는 훌륭한 조언자지만, 직접 일하지는 않습니다.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 5 — Roo가 뭔가요?
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">05 / 10 &nbsp;·&nbsp; Roo 소개</div>
+          <h1 class="slide-title">Roo — AI가 직접 일하는 코딩 에이전트</h1>
+
+          <div class="analogy-box">
+            ChatGPT가 <strong>"옆에서 조언해주는 멘토"</strong>라면,<br>
+            Roo는 <strong>"실제로 키보드를 두드리는 주니어 개발자"</strong>입니다.
+          </div>
+
+          <div class="grid-3">
+            <div class="feature-card">
+              <div class="feature-icon">🗣️</div>
+              <div class="feature-title">자연어 대화 (한국어 가능)</div>
+              <div class="feature-desc">"이 함수 이름 좀 더 명확하게 바꿔줘"처럼 일상 언어로 요청하면 됩니다. 코딩 문법을 몰라도 대화가 가능합니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📂</div>
+              <div class="feature-title">로컬 파일 직접 수정</div>
+              <div class="feature-desc">파일을 복사해서 붙여넣을 필요 없이, Roo가 내 PC의 파일을 직접 열고 수정합니다. 저장까지 해줍니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">⚡</div>
+              <div class="feature-title">터미널 명령 자동 실행</div>
+              <div class="feature-desc">"테스트 돌려줘", "패키지 설치해줘" 요청을 받으면 터미널 명령어를 직접 입력하고 실행합니다. 결과도 읽고 이어서 작업합니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🗂️</div>
+              <div class="feature-title">멀티 파일 작업</div>
+              <div class="feature-desc">파일 하나가 아니라 프로젝트 전체를 이해합니다. A 파일을 바꾸면 연결된 B, C 파일도 함께 수정합니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🖼️</div>
+              <div class="feature-title">멀티모달 지원</div>
+              <div class="feature-desc">스크린샷이나 UI 디자인 이미지를 보여주면서 "이대로 만들어줘"라고 요청할 수 있습니다. 텍스트뿐 아니라 이미지도 이해합니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">🔒</div>
+              <div class="feature-title">로컬 우선 보안</div>
+              <div class="feature-desc">내 코드가 외부 서버로 전송되지 않도록 로컬 모델과 연결할 수 있습니다. 사내 보안 정책에 맞게 운용 가능합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 6 — 상황에 따라 골라 쓰세요
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">06 / 10 &nbsp;·&nbsp; 선택 기준</div>
+          <h1 class="slide-title">상황에 따라 골라 쓰세요</h1>
+          <p class="slide-sub">두 도구는 경쟁 관계가 아닙니다. 상황에 맞게 고르면 됩니다.</p>
+
+          <div class="tbl-wrap" style="margin-bottom:14px;">
+            <table class="cmp-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>🌐 ChatGPT / Claude 웹</th>
+                  <th class="roo-col">🤖 Roo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="white-space:normal;vertical-align:middle;">이럴 때<br>좋아요</td>
+                  <td>빠른 질문·답변 / 문서 요약 / 아이디어 브레인스토밍 / 이미지 첨부</td>
+                  <td class="roo-col">실제 코드 작업 / 파일 수정 자동화 / 프로젝트 전체 리팩토링</td>
+                </tr>
+                <tr>
+                  <td>장점</td>
+                  <td>설치 없이 바로 / 어느 기기에서나 / 초보자도 5분 안에 시작</td>
+                  <td class="roo-col">파일 직접 읽기·쓰기 / 터미널 자동 실행 / 프로젝트 전체 이해</td>
+                </tr>
+                <tr>
+                  <td>단점</td>
+                  <td>복붙 반복 / 터미널은 직접 / 코드 외부 전송</td>
+                  <td class="roo-col">VS Code 초기 설치 필요 / API 키 발급 과정 있음 / 모바일 불편</td>
+                </tr>
+                <tr>
+                  <td>비용</td>
+                  <td>무료~$20/월 정액</td>
+                  <td class="roo-col"><strong>사내 API 무제한 사용 가능</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="select-guide">
+            <div class="select-guide-title">선택 가이드</div>
+            <div class="select-row"><span class="select-arrow">→</span><span>빠른 질문, 글쓰기, 요약이 필요하다면 → <strong>ChatGPT / Claude 웹</strong></span></div>
+            <div class="select-row"><span class="select-arrow">→</span><span>파일을 열고 실제로 코드를 고쳐야 한다면 → <strong>Roo</strong></span></div>
+            <div class="select-row"><span class="select-arrow">→</span><span>둘 다 쓰는 게 정답입니다. 도구는 상황에 맞게 고르면 됩니다.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 7 — 설치 방법
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">07 / 10 &nbsp;·&nbsp; 설치</div>
+          <h1 class="slide-title">Roo 시작하기 — 4단계면 충분합니다</h1>
+          <p class="slide-sub">설치 완료까지 약 10분. 한 번만 하면 됩니다.</p>
+
+          <div class="install-steps">
+            <div class="install-step">
+              <div class="step-num">1</div>
+              <div class="step-body">
+                <div class="step-title">VS Code 설치</div>
+                <div class="step-desc">
+                  <a href="https://code.visualstudio.com" target="_blank">code.visualstudio.com</a> 에서 무료로 다운로드합니다.<br>
+                  전 세계 개발자의 73%가 쓰는 코드 편집기로, 설치 파일을 실행하면 됩니다.
+                </div>
+                <span class="step-badge">무료</span>
+              </div>
+            </div>
+            <div class="install-step">
+              <div class="step-num">2</div>
+              <div class="step-body">
+                <div class="step-title">Extensions 탭 열기</div>
+                <div class="step-desc">
+                  VS Code 실행 후 <span class="kbd">Ctrl+Shift+X</span> (Mac: <span class="kbd">Cmd+Shift+X</span>)를 누르면 확장 프로그램 탭이 열립니다.<br>
+                  앱스토어처럼 필요한 도구를 검색해서 설치하는 공간입니다.
+                </div>
+              </div>
+            </div>
+            <div class="install-step">
+              <div class="step-num">3</div>
+              <div class="step-body">
+                <div class="step-title">"Roo Code" 검색 후 설치</div>
+                <div class="step-desc">
+                  검색창에 <span class="kbd">Roo Code</span> 입력 후 Install 버튼 클릭.<br>
+                  설치 완료까지 1분 이내입니다.
+                </div>
+                <span class="step-badge">오픈소스</span>
+              </div>
+            </div>
+            <div class="install-step">
+              <div class="step-num">4</div>
+              <div class="step-body">
+                <div class="step-title">API 키 입력 — 사내 API 사용</div>
+                <div class="step-desc">
+                  사내 API를 사용합니다 → <strong>토큰 무제한, 별도 비용 없음</strong><br>
+                  설정 방법: <span class="kbd">go/ums</span> 에서 키 발급 후 Roo 설정 화면에 붙여넣기
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-box">
+            💡 <strong>팁:</strong> 설치 중 오류가 생기면 편하게 문의해 주세요. 함께 해결합니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 8 — 기본 사용법 & 실전 팁
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">08 / 10 &nbsp;·&nbsp; 사용법 & 팁</div>
+          <h1 class="slide-title">처음 5분 — 이것만 알면 됩니다</h1>
+
+          <!-- 4-step flow -->
+          <div class="usage-flow" style="margin-bottom:14px;">
+            <div class="usage-step">
+              <span class="usage-step-icon">💬</span>
+              <div class="usage-step-num">1</div>
+              <div class="usage-step-text">사이드바 Roo 아이콘 클릭</div>
+            </div>
+            <div class="usage-step">
+              <span class="usage-step-icon">✍️</span>
+              <div class="usage-step-num">2</div>
+              <div class="usage-step-text">자연어로 요청 입력</div>
+            </div>
+            <div class="usage-step">
+              <span class="usage-step-icon">👀</span>
+              <div class="usage-step-num">3</div>
+              <div class="usage-step-text">변경사항 미리보기 확인</div>
+            </div>
+            <div class="usage-step">
+              <span class="usage-step-icon">✅</span>
+              <div class="usage-step-num">4</div>
+              <div class="usage-step-text">Approve / Reject 선택</div>
+            </div>
+          </div>
+
+          <!-- Example -->
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">예시</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:flex-start;gap:10px;">
+                <span style="font-size:.72rem;font-weight:700;background:var(--primary-bg);border:1px solid var(--primary-br);color:var(--primary);padding:3px 8px;border-radius:99px;flex-shrink:0;white-space:nowrap;">요청</span>
+                <span style="font-size:.83rem;">"이 파이썬 파일에서 에러가 나는 부분 찾아서 고쳐줘"</span>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:10px;">
+                <span style="font-size:.72rem;font-weight:700;background:var(--green-bg);border:1px solid var(--green-br);color:var(--green);padding:3px 8px;border-radius:99px;flex-shrink:0;white-space:nowrap;">결과</span>
+                <span style="font-size:.83rem;color:var(--muted);">파일 자동 분석 → 오류 위치 파악 → 수정안 제시 → Approve 클릭 → 저장 완료</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mode cards — flex shrink/expand, fixed height -->
+          <div class="card-label" style="margin-bottom:8px;">모드 소개 <span style="font-size:.7rem;font-weight:400;color:var(--muted);">— 카드를 클릭해 자세히 보기</span></div>
+          <div class="mode-grid" id="modeGrid">
+            <div class="mode-card" onclick="toggleMode(this)">
+              <div class="mode-card-row">
+                <span class="mode-card-emoji">💻</span>
+                <span class="mode-card-name">Code 모드</span>
+                <span class="mode-badge">기본 모드</span>
+              </div>
+              <div class="mode-card-detail">파일 직접 수정·터미널 실행. 대부분의 코딩 작업에서 사용</div>
+              <div class="mode-card-shrunk-label">Code</div>
+            </div>
+            <div class="mode-card" onclick="toggleMode(this)">
+              <div class="mode-card-row">
+                <span class="mode-card-emoji">🏗️</span>
+                <span class="mode-card-name">Architect 모드</span>
+                <span class="mode-badge">설계 전용</span>
+              </div>
+              <div class="mode-card-detail">코드 수정 없이 전체 구조 설계. 큰 그림을 잡을 때 사용</div>
+              <div class="mode-card-shrunk-label">Arch</div>
+            </div>
+            <div class="mode-card" onclick="toggleMode(this)">
+              <div class="mode-card-row">
+                <span class="mode-card-emoji">💬</span>
+                <span class="mode-card-name">Ask 모드</span>
+                <span class="mode-badge">읽기 전용</span>
+              </div>
+              <div class="mode-card-detail">코드 수정 없이 질문·설명만. 이해가 필요할 때 적합</div>
+              <div class="mode-card-shrunk-label">Ask</div>
+            </div>
+          </div>
+
+          <!-- Tips — single trigger button -->
+          <div class="card-label" style="margin-bottom:8px;">실전 팁</div>
+          <button class="tips-trigger" onclick="openTips()">
+            <div class="tips-trigger-left">
+              <span class="tips-trigger-icon">📌</span>
+              <div>
+                <div class="tips-trigger-title">실전 팁 5가지</div>
+                <div class="tips-trigger-sub">구체적 요청 · @파일명 · 단계 분리 · 커스텀 모드 · 안전하게 시도</div>
+              </div>
+            </div>
+            <span class="tips-trigger-cta">전체 보기 →</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 9 — 실제 시나리오
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">09 / 10 &nbsp;·&nbsp; 시나리오</div>
+          <h1 class="slide-title">이런 상황에서 써보세요</h1>
+          <p class="slide-sub">실제 업무 시나리오별 활용법입니다.</p>
+
+          <div class="scenario-list">
+            <div class="scenario">
+              <div class="scenario-head">
+                <div class="scenario-icon">📊</div>
+                <div class="scenario-label">시나리오 A — 데이터 분석가</div>
+              </div>
+              <div class="scenario-quote">"이 CSV 파일 읽어서 월별 매출 합계 뽑는 코드 만들어줘"</div>
+              <div class="scenario-body">pandas를 모르더라도 요청만 하면 코드를 작성하고 실행까지 합니다. 결과 확인 후 "그래프도 그려줘"로 이어가면 됩니다.</div>
+              <div class="time-badge">
+                <span class="time-before">기존: 구글 검색 + 스택오버플로우 30분</span>
+                <span class="time-arrow">→</span>
+                <span class="time-after">Roo: 3분</span>
+              </div>
+            </div>
+
+            <div class="scenario">
+              <div class="scenario-head">
+                <div class="scenario-icon">📝</div>
+                <div class="scenario-label">시나리오 B — 문서 자동 작성</div>
+              </div>
+              <div class="scenario-quote">"이 함수들 보고 API 명세서 마크다운으로 만들어줘"</div>
+              <div class="scenario-body">코드 파일을 직접 읽고 함수 설명, 파라미터, 반환값을 자동으로 문서화합니다.</div>
+              <div class="time-badge">
+                <span class="time-before">기존: 수작업 2시간</span>
+                <span class="time-arrow">→</span>
+                <span class="time-after">Roo: 10분</span>
+              </div>
+            </div>
+
+            <div class="scenario">
+              <div class="scenario-head">
+                <div class="scenario-icon">🐛</div>
+                <div class="scenario-label">시나리오 C — 디버깅</div>
+              </div>
+              <div class="scenario-quote">"테스트 돌렸더니 이 오류 났어. 원인 찾아서 고쳐줘"</div>
+              <div class="scenario-body">오류 메시지를 붙여넣으면 관련 파일을 전부 뒤져 원인을 찾고 수정합니다. 터미널에서 테스트 재실행까지 자동으로 합니다.</div>
+              <div class="time-badge">
+                <span class="time-before">기존: 원인 파악 1시간</span>
+                <span class="time-arrow">→</span>
+                <span class="time-after">Roo: 10~15분</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 10 — 정리 & 다음 단계
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">10 / 10 &nbsp;·&nbsp; 정리</div>
+          <h1 class="slide-title">핵심 3단어: 대화 → 실행 → 완성</h1>
+
+          <div class="checklist">
+            <div class="check-item"><div class="check-icon">✓</div><div class="check-text">LLM은 이미 우리 모두가 쓰는 기술입니다</div></div>
+            <div class="check-item"><div class="check-icon">✓</div><div class="check-text">ChatGPT·Claude는 대화 도구, Roo는 행동 도구입니다</div></div>
+            <div class="check-item"><div class="check-icon">✓</div><div class="check-text">파일 복붙 없이 프로젝트 전체를 직접 수정합니다</div></div>
+            <div class="check-item"><div class="check-icon">✓</div><div class="check-text">Approve 전엔 아무것도 바뀌지 않아 안전합니다</div></div>
+            <div class="check-item"><div class="check-icon">✓</div><div class="check-text">사내 API로 비용 걱정 없이 바로 시작할 수 있습니다</div></div>
+          </div>
+
+          <div class="card-label" style="margin-bottom:8px;">교육 로드맵</div>
+          <div class="tbl-wrap" style="margin-bottom:16px;">
+            <table class="roadmap-table">
+              <thead>
+                <tr><th></th><th>대상</th><th>내용</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1일차</td>
+                  <td>전체 팀</td>
+                  <td>LLM 개념 + Roo 설치 + 기본 사용법 실습</td>
+                </tr>
+                <tr>
+                  <td>2일차</td>
+                  <td>희망자</td>
+                  <td>실제 프로젝트에 Roo 적용 + 커스텀 모드 구성</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card-label" style="margin-bottom:8px;">참고 자료</div>
+          <div class="ref-row">
+            <div class="ref-item">📄 <strong>공식 문서:</strong> <span style="color:var(--muted);font-style:italic;">URL 추가 예정</span></div>
+            <div class="ref-item">🏢 <strong>사내 설치 가이드:</strong> <span style="color:var(--muted);font-style:italic;">URL 추가 예정</span></div>
+            <div class="ref-item">🔑 <strong>API 키 발급:</strong> <span class="kbd">go/ums</span></div>
+          </div>
+
+          <div class="cta-box">
+            <div class="cta-main">🚀 지금 바로 설치하고, 팀원에게 소개해보세요.</div>
+            <div class="cta-sub">Extensions 탭 → "Roo Code" 검색 → Install — 10분이면 시작할 수 있습니다</div>
+          </div>
+          <div class="qa-box">궁금한 점은 자유롭게 질문해 주세요.</div>
+        </div>
+      </div>
+
+    </div><!-- /slides-track -->
+  </div><!-- /slides-viewport -->
+
+  <footer class="bottombar" id="dots"></footer>
+
+  <button class="paw-btn" id="pawBtn" onclick="goto(0)" title="처음으로 ↩">🐾</button>
+</div>
+
+<script>
+  const TOTAL = 10;
+  let cur = 0;
+  const track   = document.getElementById('track');
+  const prog    = document.getElementById('prog');
+  const curEl   = document.getElementById('cur');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const dotsEl  = document.getElementById('dots');
+
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goto(i);
+    dotsEl.appendChild(d);
+  }
+
+  const pawBtn = document.getElementById('pawBtn');
+
+  function revealHero() {
+    document.getElementById('heroDesc2').classList.add('revealed');
+    document.getElementById('heroPresenter').classList.add('revealed');
+  }
+
+  function goto(n) {
+    cur = Math.max(0, Math.min(TOTAL - 1, n));
+    track.style.transform = `translateX(-${cur * 100}%)`;
+    prog.style.width = `${((cur + 1) / TOTAL) * 100}%`;
+    curEl.textContent = cur + 1;
+    prevBtn.disabled = cur === 0;
+    nextBtn.disabled = cur === TOTAL - 1;
+    dotsEl.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === cur));
+    const pawSlides = [1, 3, 5, 7, 9];
+    pawBtn.classList.toggle('visible', pawSlides.includes(cur));
+  }
+
+  function go(dir) { goto(cur + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+
+  function toggleMode(card) {
+    const cards = [...card.closest('.mode-grid').querySelectorAll('.mode-card')];
+    const wasActive = card.classList.contains('active');
+    cards.forEach(c => c.classList.remove('active', 'shrunk'));
+    if (!wasActive) {
+      card.classList.add('active');
+      cards.filter(c => c !== card).forEach(c => c.classList.add('shrunk'));
+    }
+  }
+
+  function openTips() {
+    document.getElementById('tipsOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeTips() {
+    document.getElementById('tipsOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeTips(); return; }
+    if (document.getElementById('tipsOverlay').classList.contains('open')) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend',   e => {
+    if (document.getElementById('tipsOverlay').classList.contains('open')) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  }, { passive: true });
+</script>
+
+<!-- Tips full-screen overlay -->
+<div class="tips-overlay" id="tipsOverlay">
+  <div class="tips-overlay-header">
+    <div class="tips-overlay-title">📌 실전 팁 5가지</div>
+    <button class="tips-close-btn" onclick="closeTips()">✕ 닫기</button>
+  </div>
+  <div class="tips-overlay-body">
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-star">★</span><span class="tip-full-title">구체적으로 요청하기</span></div>
+      <div class="tip-examples">
+        <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"코드 고쳐줘"</span></div>
+        <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"3번째 줄에서 나는 TypeError: NoneType 오류를 고쳐줘"</span></div>
+      </div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-star">★★</span><span class="tip-full-title">@파일명으로 컨텍스트 잡기 (가장 중요)</span></div>
+      <div class="tip-examples">
+        <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"함수 수정해줘" (어떤 파일인지 모름)</span></div>
+        <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"@utils.py 안에 있는 parse_date 함수 수정해줘"</span></div>
+      </div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-full-title">단계별로 나누기</span></div>
+      <div class="tip-examples">
+        <div class="tip-ex"><span class="tip-ex-bad">✗</span><span>"전체 프로젝트 리팩토링해줘" (너무 광범위)</span></div>
+        <div class="tip-ex"><span class="tip-ex-good">✓</span><span>"먼저 data_loader.py만 정리해줘, 그다음 model.py 할게"</span></div>
+      </div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-full-title">커스텀 모드 만들기</span></div>
+      <div class="tip-plain">자주 쓰는 작업 스타일을 모드로 저장할 수 있습니다.<br>예: "우리 팀 코딩 컨벤션 적용 모드" — 매번 설명 없이 바로 그 스타일로 작업합니다.</div>
+    </div>
+    <div class="tip-full">
+      <div class="tip-full-head"><span class="tip-full-title">실수해도 괜찮다 ✅</span></div>
+      <div class="tip-plain" style="color:var(--green);font-weight:600;">Approve 전엔 아무것도 바뀌지 않습니다. 미리보기를 보고 마음에 안 들면 Reject하면 됩니다.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
