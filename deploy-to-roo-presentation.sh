@@ -1,22 +1,35 @@
 #!/bin/bash
-# roo_presentation 저장소를 초기화하고 발표 파일을 넣는 스크립트
-# 사용법: bash deploy-to-roo-presentation.sh
+# imyo(gh-pages)의 발표 자료를 roo_presentation 저장소로 복사하는 스크립트
+#
+# 사용법:
+#   1) 이 파일을 본인 PC에 저장 (예: deploy-to-roo-presentation.sh)
+#   2) 터미널에서 실행:
+#        bash deploy-to-roo-presentation.sh
+#
+# 사전 준비:
+#   - git 설치 필요
+#   - GitHub 로그인 상태여야 함 (HTTPS면 자격 증명 캐시, SSH면 SSH 키 등록)
+#   - yeonok-cho/imyo, yeonok-cho/roo_presentation 두 저장소에 push 권한 필요
 
 set -e
 
-REPO="https://github.com/yeonok-cho/roo_presentation.git"
+SRC_REPO="https://github.com/yeonok-cho/imyo.git"
+DST_REPO="https://github.com/yeonok-cho/roo_presentation.git"
 TMPDIR=$(mktemp -d)
 
+echo "📂 imyo (gh-pages) 클론 중..."
+git clone --branch gh-pages --single-branch "$SRC_REPO" "$TMPDIR/imyo"
+
 echo "📂 roo_presentation 클론 중..."
-git clone "$REPO" "$TMPDIR/roo_presentation"
+git clone "$DST_REPO" "$TMPDIR/roo_presentation"
 cd "$TMPDIR/roo_presentation"
 
 echo "🗑️  기존 파일 삭제 중..."
 git rm -rf . --quiet 2>/dev/null || true
 
 echo "📋 발표 파일 복사 중..."
-cp "$(dirname "$0")/roo-presentation.html" ./index.html
-cp "$(dirname "$0")/PROMPT.md" ./PROMPT.md
+cp "$TMPDIR/imyo/index.html" ./index.html
+cp "$TMPDIR/imyo/PROMPT.md" ./PROMPT.md
 
 echo "💾 커밋 중..."
 git add .
