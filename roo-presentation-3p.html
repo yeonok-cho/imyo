@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>[요약 3p] Roo — AI가 직접 일하는 새로운 방법</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #FAFAF8;
+      --surface:   #FFFFFF;
+      --border:    #E8E4DE;
+      --border-sm: #F0EDE8;
+      --primary:   #D97757;
+      --primary-h: #C4623E;
+      --primary-bg:#FDF3EE;
+      --primary-br:#F9D5C3;
+      --text:      #1C1917;
+      --muted:     #78716C;
+      --soft:      #F5F2EE;
+      --green:     #16A34A;
+      --green-bg:  #DCFCE7;
+      --green-br:  #BBF7D0;
+      --red:       #DC2626;
+      --red-bg:    #FEE2E2;
+      --blue:      #2563EB;
+      --blue-bg:   #EFF6FF;
+      --blue-br:   #BFDBFE;
+      --radius:    12px;
+      --radius-sm: 8px;
+      --shadow:    0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Layout ── */
+    .pres { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+    /* ── Top bar ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0; gap: 16px;
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 1rem; color: var(--text); letter-spacing: -.02em;
+    }
+    .brand-dot {
+      width: 28px; height: 28px; background: var(--primary); border-radius: 7px;
+      display: grid; place-items: center; color: #fff; font-size: .75rem; font-weight: 800;
+    }
+    .topbar-progress-wrap { flex: 1; max-width: 320px; display: flex; flex-direction: column; gap: 4px; }
+    .progress-label { font-size: .72rem; color: var(--muted); text-align: right; }
+    .progress-bar-bg { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill {
+      height: 100%; background: var(--primary); border-radius: 99px;
+      transition: width .35s cubic-bezier(.4,0,.2,1);
+    }
+    .topbar-nav { display: flex; gap: 8px; }
+    .nav-btn {
+      width: 34px; height: 34px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); cursor: pointer; display: grid; place-items: center;
+      color: var(--muted); transition: all .15s; font-size: .9rem;
+    }
+    .nav-btn:hover:not(:disabled) { background: var(--soft); border-color: var(--primary); color: var(--primary); }
+    .nav-btn:disabled { opacity: .35; cursor: default; }
+
+    /* ── Slides viewport ── */
+    .slides-viewport { flex: 1; overflow: hidden; position: relative; }
+    .slides-track { display: flex; height: 100%; transition: transform .4s cubic-bezier(.4,0,.2,1); }
+    .slide {
+      min-width: 100%; height: 100%; overflow: hidden;
+      padding: 28px 28px 16px; display: flex; align-items: flex-start; justify-content: center;
+    }
+    .slide-inner { width: 100%; max-width: 840px; }
+
+    /* ── Bottom dots ── */
+    .bottombar {
+      display: flex; justify-content: center; align-items: center; gap: 8px;
+      padding: 13px; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 99px; background: var(--border); cursor: pointer; transition: all .2s; }
+    .dot.active { background: var(--primary); width: 22px; }
+
+    /* ── Common ── */
+    .slide-num {
+      display: inline-block; font-size: .7rem; font-weight: 700; color: var(--primary);
+      background: var(--primary-bg); border: 1px solid var(--primary-br);
+      padding: 3px 10px; border-radius: 99px; margin-bottom: 18px;
+      letter-spacing: .05em; text-transform: uppercase;
+    }
+    .slide-title {
+      font-size: clamp(1.5rem, 3.5vw, 2.2rem); font-weight: 800;
+      letter-spacing: -.04em; line-height: 1.15; color: var(--text); margin-bottom: 6px;
+    }
+    .slide-sub { font-size: clamp(.85rem, 1.8vw, .98rem); color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+    .card-label { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    .highlight-box {
+      background: var(--primary-bg); border: 1px solid var(--primary-br);
+      border-radius: var(--radius-sm); padding: 14px 18px;
+      font-size: .87rem; color: var(--primary); line-height: 1.55;
+    }
+    .highlight-box strong { font-weight: 700; }
+
+    /* ── Grid layouts ── */
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    /* ── Feature cards ── */
+    .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+    .feature-icon { width: 34px; height: 34px; background: var(--soft); border-radius: 9px; display: grid; place-items: center; font-size: 1rem; margin-bottom: 10px; }
+    .feature-title { font-size: .88rem; font-weight: 700; margin-bottom: 4px; }
+    .feature-desc { font-size: .78rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── Table ── */
+    .tbl-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    .cmp-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .cmp-table th {
+      text-align: left; padding: 10px 13px; background: var(--soft);
+      border-bottom: 1px solid var(--border); font-weight: 700; color: var(--muted);
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+    }
+    .cmp-table td {
+      padding: 10px 13px; border-bottom: 1px solid var(--border-sm);
+      vertical-align: top; line-height: 1.45; color: var(--text);
+    }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    .cmp-table tr:hover td { background: var(--soft); }
+    .cmp-table td:first-child { font-weight: 600; color: var(--muted); white-space: nowrap; width: 90px; }
+    .cmp-table td.roo-col { background: #FFFBF9; font-weight: 500; }
+    .cmp-table th.roo-col { background: var(--primary-bg); color: var(--primary); }
+    .pill { display: inline-flex; align-items: center; gap: 4px; font-size: .75rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+    .pill-green { background: var(--green-bg); color: var(--green); }
+    .pill-red   { background: var(--red-bg); color: var(--red); }
+
+    /* ── Slide 1 hero ── */
+    .hero-name { font-size: clamp(3.5rem, 10vw, 6rem); font-weight: 900; letter-spacing: -.07em; line-height: 1; color: var(--text); margin-bottom: 12px; }
+    .hero-accent { color: var(--primary); }
+    .hero-subtitle { font-size: clamp(1rem, 2.5vw, 1.2rem); font-weight: 600; color: var(--text); margin-bottom: 8px; letter-spacing: -.02em; }
+    .hero-desc { font-size: clamp(.85rem, 1.8vw, .95rem); color: var(--muted); line-height: 1.7; max-width: 580px; margin-bottom: 14px; }
+    .hero-desc-1 { cursor: pointer; user-select: none; display: flex; align-items: baseline; gap: 8px; }
+    .hero-desc-1:hover .hero-hint { opacity: 1; }
+    .hero-hint {
+      font-size: .75rem; color: var(--primary); font-style: normal;
+      opacity: .45; transition: opacity .2s; flex-shrink: 0;
+    }
+    .hero-desc-2 {
+      max-height: 0; overflow: hidden; opacity: 0; margin-bottom: 0;
+      transition: max-height .5s cubic-bezier(.4,0,.2,1), opacity .35s .1s, margin-bottom .4s;
+    }
+    .hero-desc-2.revealed { max-height: 60px; opacity: 1; margin-bottom: 14px; }
+    .hero-presenter {
+      display: flex; justify-content: flex-end;
+      margin-bottom: 14px;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity .4s .15s, transform .4s .15s;
+    }
+    .hero-presenter.revealed { opacity: 1; transform: translateY(0); }
+    .hero-presenter-inner {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--soft); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 14px;
+      font-size: .82rem; color: var(--muted); font-weight: 500;
+    }
+    .hero-presenter strong { color: var(--text); font-weight: 700; }
+
+    /* ── Story (problem) ── */
+    .story-box {
+      background: var(--soft); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 22px; margin-bottom: 16px;
+    }
+    .story-steps { display: flex; flex-direction: column; gap: 0; }
+    .story-step { display: flex; align-items: flex-start; gap: 12px; position: relative; padding-bottom: 9px; }
+    .story-step:not(:last-child)::before { content: ''; position: absolute; left: 14px; top: 30px; bottom: 0; width: 2px; background: var(--border); }
+    .story-step-num { width: 28px; height: 28px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; display: grid; place-items: center; font-size: .75rem; font-weight: 700; color: var(--muted); z-index: 1; }
+    .story-step-text { font-size: .83rem; color: var(--text); padding-top: 5px; line-height: 1.45; }
+    .story-step-text em { color: var(--red); font-style: normal; font-weight: 600; }
+
+    /* ── Analogy ── */
+    .analogy-box {
+      background: var(--primary-bg); border: 1px solid var(--primary-br);
+      border-radius: var(--radius); padding: 18px 22px; margin-bottom: 22px;
+      font-size: .9rem; line-height: 1.65; color: var(--text);
+    }
+    .analogy-box strong { color: var(--primary); }
+
+    /* ── Install steps ── */
+    .install-steps { display: flex; flex-direction: column; gap: 0; margin-bottom: 16px; }
+    .install-step { display: flex; gap: 18px; position: relative; }
+    .install-step:not(:last-child)::before { content: ''; position: absolute; left: 19px; top: 40px; bottom: -4px; width: 2px; background: var(--border); }
+    .step-num { width: 40px; height: 40px; flex-shrink: 0; background: var(--primary); color: #fff; border-radius: 99px; display: grid; place-items: center; font-weight: 800; font-size: .88rem; z-index: 1; }
+    .step-body { flex: 1; padding-bottom: 12px; }
+    .step-title { font-size: .92rem; font-weight: 700; margin-bottom: 4px; }
+    .step-desc { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+    .step-desc a { color: var(--primary); text-decoration: none; }
+    .step-desc a:hover { text-decoration: underline; }
+    .step-badge { display: inline-block; margin-top: 6px; font-size: .71rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--soft); border: 1px solid var(--border); color: var(--muted); }
+    .kbd { background: var(--soft); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: .78rem; font-family: monospace; color: var(--text); }
+
+    /* ── Scenario ── */
+    .scenario { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); margin-bottom: 14px; }
+    .scenario-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .scenario-icon { width: 36px; height: 36px; background: var(--soft); border-radius: 9px; display: grid; place-items: center; font-size: 1rem; flex-shrink: 0; }
+    .scenario-label { font-size: .88rem; font-weight: 700; }
+    .scenario-quote {
+      font-size: .85rem; color: var(--muted); font-style: italic;
+      background: var(--soft); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 10px;
+    }
+    .scenario-body { font-size: .8rem; color: var(--muted); line-height: 1.6; margin-bottom: 10px; }
+    .time-badge { display: flex; align-items: center; gap: 8px; font-size: .78rem; }
+    .time-before { background: var(--red-bg); color: var(--red); font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+    .time-after  { background: var(--green-bg); color: var(--green); font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+    .time-arrow  { color: var(--muted); font-size: .85rem; }
+
+    /* ── Checklist & CTA ── */
+    .checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .check-item { display: flex; align-items: flex-start; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 16px; box-shadow: var(--shadow); }
+    .check-icon { width: 22px; height: 22px; flex-shrink: 0; background: var(--green-bg); border-radius: 99px; display: grid; place-items: center; color: var(--green); font-size: .72rem; margin-top: 1px; }
+    .check-text { font-size: .86rem; line-height: 1.5; }
+    .cta-box { background: var(--primary); border-radius: var(--radius); padding: 18px 24px; }
+    .cta-main { font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .cta-sub  { font-size: .83rem; color: rgba(255,255,255,.8); }
+    .qa-box { margin-top: 12px; text-align: center; font-size: .88rem; color: var(--muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .slide { padding: 20px 14px 16px; overflow-y: auto; }
+      .topbar { padding: 10px 14px; }
+      .topbar-progress-wrap { display: none; }
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .hero-name { font-size: 3rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="pres">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-dot">R</div>
+      Roo 소개 — 요약본
+    </div>
+    <div class="topbar-progress-wrap">
+      <div class="progress-label"><span id="cur">1</span> / 3</div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog" style="width:33.33%"></div></div>
+    </div>
+    <div class="topbar-nav">
+      <button class="nav-btn" id="prevBtn" onclick="go(-1)" disabled>&#8592;</button>
+      <button class="nav-btn" id="nextBtn" onclick="go(1)">&#8594;</button>
+    </div>
+  </header>
+
+  <!-- Slides -->
+  <div class="slides-viewport">
+    <div class="slides-track" id="track">
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 1 — 문제 제기: AI는 똑똑한데 왜 아직도 복붙?
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">01 / 03 &nbsp;·&nbsp; 시작하며</div>
+          <div class="hero-name">Roo<span class="hero-accent">.</span></div>
+          <div class="hero-subtitle">AI가 직접 컴퓨터에서 일하는 새로운 방법</div>
+
+          <p class="hero-desc hero-desc-1" onclick="revealHero()">
+            ChatGPT는 다들 써보셨죠? 그런데 AI가 제 컴퓨터 파일을 직접 열어서 고쳐준다면 어떨까요?
+            <span class="hero-hint">클릭 →</span>
+          </p>
+          <p class="hero-desc hero-desc-2" id="heroDesc2">
+            오늘은 "대화하는 AI"에서 "직접 실행하는 AI"로 넘어가는 이야기를 해보겠습니다.
+          </p>
+
+          <div class="hero-presenter" id="heroPresenter">
+            <div class="hero-presenter-inner">
+              <span>발표자</span>
+              <strong>조연옥 / 통계기술 파트</strong>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card-label">AI(LLM)란?</div>
+          <div class="highlight-box" style="margin-bottom:16px;">
+            💡 AI는 수백억 개의 글을 읽고 학습한 <strong>"텍스트 전문가"</strong>입니다.
+            대화는 잘하지만, 스스로 파일을 고치거나 실행하지는 못합니다.
+          </div>
+
+          <div class="card-label">그래서 ChatGPT로 코딩하면…</div>
+          <div class="story-box">
+            <div class="story-steps">
+              <div class="story-step">
+                <div class="story-step-num">1</div>
+                <div class="story-step-text">코드를 복사해서 ChatGPT에 붙여넣기</div>
+              </div>
+              <div class="story-step">
+                <div class="story-step-num">2</div>
+                <div class="story-step-text">답변 받기 → 다시 내 파일에 붙여넣고 실행</div>
+              </div>
+              <div class="story-step">
+                <div class="story-step-num" style="background:var(--red-bg);color:var(--red);border-color:var(--red-bg);">∞</div>
+                <div class="story-step-text">오류 발생 → 다시 복사·붙여넣기 <em>반복…</em></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 2 — Roo 소개: 직접 일하는 AI
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">02 / 03 &nbsp;·&nbsp; Roo 소개</div>
+          <h1 class="slide-title">Roo — 직접 일하는 AI 동료</h1>
+          <p class="slide-sub">ChatGPT가 옆에서 조언한다면, Roo는 직접 실행합니다.</p>
+
+          <div class="analogy-box">
+            ChatGPT가 <strong>"옆에서 조언해주는 멘토"</strong>라면,
+            Roo는 <strong>"내 컴퓨터에서 직접 작업하는 동료"</strong>입니다.
+          </div>
+
+          <div class="grid-3" style="margin-bottom:20px;">
+            <div class="feature-card">
+              <div class="feature-icon">🗣️</div>
+              <div class="feature-title">한국어로 편하게 대화</div>
+              <div class="feature-desc">"이 함수 이름 더 명확하게 바꿔줘"처럼 일상 언어로 요청하면 됩니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">📂</div>
+              <div class="feature-title">파일을 직접 열고 수정</div>
+              <div class="feature-desc">복붙 없이 Roo가 내 PC의 파일을 직접 열고, 고치고, 저장합니다.</div>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon">⚡</div>
+              <div class="feature-title">터미널 명령도 자동 실행</div>
+              <div class="feature-desc">"테스트 돌려줘" 요청을 받으면 명령어를 직접 실행하고 결과까지 확인합니다.</div>
+            </div>
+          </div>
+
+          <div class="tbl-wrap" style="margin-bottom:16px;">
+            <table class="cmp-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>🌐 ChatGPT / 웹 AI</th>
+                  <th class="roo-col">🤖 Roo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>파일 수정</td>
+                  <td><span class="pill pill-red">✗</span> 복사·붙여넣기 직접</td>
+                  <td class="roo-col"><span class="pill pill-green">✓</span> 직접 열고 수정</td>
+                </tr>
+                <tr>
+                  <td>실행</td>
+                  <td><span class="pill pill-red">✗</span> 터미널은 직접</td>
+                  <td class="roo-col"><span class="pill pill-green">✓</span> 자동 실행</td>
+                </tr>
+                <tr>
+                  <td>안전장치</td>
+                  <td>—</td>
+                  <td class="roo-col"><span class="pill pill-green">✓</span> Approve 전엔 변경 없음</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="highlight-box">
+            💡 <strong>핵심:</strong> Approve 버튼을 누르기 전까지는 아무것도 바뀌지 않아 안전합니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════
+           SLIDE 3 — 시작하기: 설치 + 예시 + 마무리
+      ══════════════════════════════════════════ -->
+      <div class="slide">
+        <div class="slide-inner">
+          <div class="slide-num">03 / 03 &nbsp;·&nbsp; 시작하기</div>
+          <h1 class="slide-title">시작은 3단계, 10분이면 충분합니다</h1>
+
+          <div class="install-steps">
+            <div class="install-step">
+              <div class="step-num">1</div>
+              <div class="step-body">
+                <div class="step-title">VS Code 설치</div>
+                <div class="step-desc">
+                  <a href="https://code.visualstudio.com" target="_blank">code.visualstudio.com</a> 에서 무료로 다운로드합니다.
+                </div>
+                <span class="step-badge">무료</span>
+              </div>
+            </div>
+            <div class="install-step">
+              <div class="step-num">2</div>
+              <div class="step-body">
+                <div class="step-title">Extensions에서 "Roo Code" 검색 후 설치</div>
+                <div class="step-desc">
+                  <span class="kbd">Ctrl+Shift+X</span> (Mac: <span class="kbd">Cmd+Shift+X</span>) → 검색창에 <span class="kbd">Roo Code</span> 입력 → Install
+                </div>
+              </div>
+            </div>
+            <div class="install-step">
+              <div class="step-num">3</div>
+              <div class="step-body">
+                <div class="step-title">사내 API 키 입력</div>
+                <div class="step-desc">
+                  <span class="kbd">go/ums</span> 에서 키 발급 후 Roo 설정 화면에 붙여넣기 — <strong>토큰 무제한, 별도 비용 없음</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-label">예시로 보면</div>
+          <div class="scenario" style="margin-bottom:18px;">
+            <div class="scenario-head">
+              <div class="scenario-icon">🐛</div>
+              <div class="scenario-label">디버깅 요청</div>
+            </div>
+            <div class="scenario-quote">"이 코드에서 에러 나는 부분 찾아서 고쳐줘"</div>
+            <div class="scenario-body">파일을 직접 분석해서 원인을 찾고 수정안을 제시 → Approve 클릭 → 자동 저장 + 재실행까지 완료.</div>
+            <div class="time-badge">
+              <span class="time-before">기존: 원인 파악 1시간</span>
+              <span class="time-arrow">→</span>
+              <span class="time-after">Roo: 10분</span>
+            </div>
+          </div>
+
+          <div class="cta-box">
+            <div class="cta-main">🚀 지금 바로 설치하고 체험해보세요.</div>
+            <div class="cta-sub">Extensions 탭 → "Roo Code" 검색 → Install — 10분이면 시작할 수 있습니다</div>
+          </div>
+          <div class="qa-box">궁금한 점은 자유롭게 질문해 주세요.</div>
+        </div>
+      </div>
+
+    </div><!-- /slides-track -->
+  </div><!-- /slides-viewport -->
+
+  <footer class="bottombar" id="dots"></footer>
+</div>
+
+<script>
+  const TOTAL = 3;
+  let cur = 0;
+  const track   = document.getElementById('track');
+  const prog    = document.getElementById('prog');
+  const curEl   = document.getElementById('cur');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const dotsEl  = document.getElementById('dots');
+
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goto(i);
+    dotsEl.appendChild(d);
+  }
+
+  function revealHero() {
+    document.getElementById('heroDesc2').classList.add('revealed');
+    document.getElementById('heroPresenter').classList.add('revealed');
+  }
+
+  function goto(n) {
+    cur = Math.max(0, Math.min(TOTAL - 1, n));
+    track.style.transform = `translateX(-${cur * 100}%)`;
+    prog.style.width = `${((cur + 1) / TOTAL) * 100}%`;
+    curEl.textContent = cur + 1;
+    prevBtn.disabled = cur === 0;
+    nextBtn.disabled = cur === TOTAL - 1;
+    dotsEl.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === cur));
+  }
+
+  function go(dir) { goto(cur + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+  });
+
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+  }, { passive: true });
+</script>
+</body>
+</html>
