@@ -32,7 +32,6 @@ GROUP_COLS = [
 
 def find_knee_points(
     g,
-    product,
     smooth_window=31,
     slope_ratio=0.1,
     plateau_time_window=100
@@ -45,40 +44,26 @@ def find_knee_points(
     )
 
     if len(g) < 5:
-        return {
-            'TIME_FORWARD':             np.nan,
-            'ACT_POS_FORWARD':          np.nan,
-            'ACT_POS_SMOOTH_FORWARD':   np.nan,
-            'TIME_BACKWARD':            np.nan,
-            'ACT_POS_BACKWARD':         np.nan,
-            'ACT_POS_SMOOTH_BACKWARD':  np.nan,
-            'TIME_DIFF':                np.nan,
-            'MATCH':                    False,
-            'ACT_POS_T0':               np.nan,
-            'h6':                       np.nan,
-        }
+        return None
 
-    # -------------------------
-    # Product 확인
-    # -------------------------
-    is_product_ending_with_2 = str(product).endswith("_2")
+    # ------------------
+    # smoothing
+    # ------------------
 
-    # -------------------------
-    # Smooth
-    # -------------------------
     g['ACT_POS_SMOOTH'] = (
         g['ACT_POS']
         .rolling(
-            window=smooth_window,
+            smooth_window,
             center=True,
             min_periods=1
         )
         .mean()
     )
 
-    # -------------------------
-    # Slope
-    # -------------------------
+    # ------------------
+    # slope
+    # ------------------
+
     g['SLOPE'] = np.gradient(
         g['ACT_POS_SMOOTH'].values,
         g['TIME'].values
@@ -87,9 +72,10 @@ def find_knee_points(
     max_slope = g['SLOPE'].max()
     threshold = max_slope * slope_ratio
 
-    # -------------------------
+    # ------------------
     # t0
-    # -------------------------
+    # ------------------
+
     t0_time = g['t0_time'].iloc[0]
 
     idx_t0 = (
@@ -98,76 +84,90 @@ def find_knee_points(
         .idxmin()
     )
 
-    actpos_t0 = g.loc[idx_t0, 'ACT_POS']
+    actpos_t0 = g.loc[
+        idx_t0,
+        'ACT_POS'
+    ]
 
-    # ==================================================
-    # Forward
-    # ==================================================
-    if is_product_ending_with_2:
+    # ------------------
+    # min act pos (상승 시작 기준점)
+    # ------------------
 
-        forward_candidate = g[g['SLOPE'] <= threshold]
+    idx_min_act = g['ACT_POS'].idxmin()
+    min_time    = g.loc[idx_min_act, 'TIME']
+    actpos_min  = g.loc[idx_min_act, 'ACT_POS']
 
-        if len(forward_candidate):
+    post_min = g[g['TIME'] >= min_time]
 
-            idx_forward_start = forward_candidate.index[0]
+    # ------------------
+    # 상승 시작점 (slope가 threshold를 넘는 첫 지점)
+    # ------------------
 
-            start_time = g.loc[idx_forward_start, 'TIME']
+    rising_candidate = post_min[post_min['SLOPE'] > threshold]
+
+    if len(rising_candidate):
+
+        rise_start_time = rising_candidate['TIME'].iloc[0]
+
+        after_rise = post_min[post_min['TIME'] >= rise_start_time]
+
+        # ------------------
+        # 상승 정지점 (knee) : 상승 시작 이후 slope가 다시
+        # threshold 이하로 떨어지는 첫 지점
+        # ------------------
+
+        plateau_candidate = after_rise[after_rise['SLOPE'] <= threshold]
+
+        if len(plateau_candidate):
+
+            plateau_time = plateau_candidate['TIME'].iloc[0]
 
             search_region = g[
-                (g['TIME'] >= start_time) &
-                (g['TIME'] <= start_time + plateau_time_window)
+                (g['TIME'] >= plateau_time)
+                &
+                (g['TIME'] <= plateau_time + plateau_time_window)
             ]
 
-            idx_forward = search_region['ACT_POS_SMOOTH'].idxmax()
+            idx_forward = (
+                search_region['ACT_POS_SMOOTH'].idxmax()
+            )
 
         else:
-            idx_forward = g['ACT_POS_SMOOTH'].idxmax()
+            idx_forward = after_rise['ACT_POS_SMOOTH'].idxmax()
 
     else:
+        idx_forward = post_min['ACT_POS_SMOOTH'].idxmax()
 
-        start_time = g['TIME'].min()
+    time_forward = g.loc[
+        idx_forward,
+        'TIME'
+    ]
 
-        search_region = g[
-            (g['TIME'] >= start_time) &
-            (g['TIME'] <= start_time + plateau_time_window)
-        ]
+    actpos_forward = g.loc[
+        idx_forward,
+        'ACT_POS'
+    ]
 
-        idx_forward = search_region['ACT_POS_SMOOTH'].idxmax()
-
-    # ==================================================
-    # Backward
-    # ==================================================
-    backward_candidate = (
-        g.iloc[::-1]
-        .loc[lambda x: x['SLOPE'] > threshold]
+    h6 = (
+        actpos_forward
+        -
+        actpos_min
     )
 
-    if len(backward_candidate):
-        idx_backward = backward_candidate.index[0]
-    else:
-        idx_backward = g['ACT_POS_SMOOTH'].idxmax()
+    return pd.Series({
 
-    time_forward  = g.loc[idx_forward,  'TIME']
-    time_backward = g.loc[idx_backward, 'TIME']
+        'TIME_FORWARD':
+            time_forward,
 
-    h6 = g.loc[idx_forward, 'ACT_POS'] - actpos_t0
+        'ACT_POS_FORWARD':
+            actpos_forward,
 
-    return {
-        'TIME_FORWARD':             time_forward,
-        'ACT_POS_FORWARD':          g.loc[idx_forward,  'ACT_POS'],
-        'ACT_POS_SMOOTH_FORWARD':   g.loc[idx_forward,  'ACT_POS_SMOOTH'],
+        'ACT_POS_T0':
+            actpos_t0,
 
-        'TIME_BACKWARD':            time_backward,
-        'ACT_POS_BACKWARD':         g.loc[idx_backward, 'ACT_POS'],
-        'ACT_POS_SMOOTH_BACKWARD':  g.loc[idx_backward, 'ACT_POS_SMOOTH'],
-
-        'TIME_DIFF':    abs(time_forward - time_backward),
-        'MATCH':        abs(time_forward - time_backward) <= 100,
-
-        'ACT_POS_T0':   actpos_t0,
-        'h6':           h6,
-    }
-
+        'h6':
+            h6
+    })
 
 # =====================================================
 # 파일 처리
@@ -190,8 +190,14 @@ def process_one_file(pkl_file):
     with open(pkl_file, 'rb') as f:
         df = pickle.load(f)
 
-    print(f"Load Time : {time.perf_counter()-t0:.2f}s")
-    print(f"Raw Shape : {df.shape}")
+    print(
+        f"Load Time : "
+        f"{time.perf_counter()-t0:.2f}s"
+    )
+
+    print(
+        f"Raw Shape : {df.shape}"
+    )
 
     # -------------------------------------------------
     # datatype
@@ -212,8 +218,13 @@ def process_one_file(pkl_file):
     # -------------------------------------------------
 
     before = len(df)
+
     df = df.drop_duplicates()
-    print(f"Duplicate Removed : {before - len(df)}")
+
+    print(
+        f"Duplicate Removed : "
+        f"{before-len(df)}"
+    )
 
     # -------------------------------------------------
     # filter
@@ -241,41 +252,42 @@ def process_one_file(pkl_file):
         (df_h6['TIME'] <= 9701)
     ].copy()
 
-    print(f"Filter Time : {time.perf_counter()-t0:.2f}s")
-    print(f"Filtered Shape : {df_h6.shape}")
+    print(
+        f"Filter Time : "
+        f"{time.perf_counter()-t0:.2f}s"
+    )
+
+    print(
+        f"Filtered Shape : "
+        f"{df_h6.shape}"
+    )
 
     # -------------------------------------------------
-    # knee (for loop)
+    # knee
     # -------------------------------------------------
 
     t0 = time.perf_counter()
 
-    records = []
+    result = (
+        df_h6
+        .groupby(
+            GROUP_COLS,
+            observed=True
+        )
+        .apply(find_knee_points)
+        .dropna()
+        .reset_index()
+    )
 
-    for key, g in df_h6.groupby(GROUP_COLS, observed=True):
+    print(
+        f"Knee Time : "
+        f"{time.perf_counter()-t0:.2f}s"
+    )
 
-        eqp_id, product, wafer_id, module_id, x, y = key
-
-        knee = find_knee_points(g, product)
-
-        knee.update({
-            'eqp_id':     eqp_id,
-            'product':    product,
-            'wafer_id':   wafer_id,
-            'module_id':  module_id,
-            'x':          x,
-            'y':          y,
-        })
-
-        records.append(knee)
-
-    result = pd.DataFrame(records)
-
-    # NaN 행 제거 (TIME_FORWARD 기준)
-    result = result.dropna(subset=['TIME_FORWARD']).reset_index(drop=True)
-
-    print(f"Knee Time : {time.perf_counter()-t0:.2f}s")
-    print(f"Result Shape : {result.shape}")
+    print(
+        f"Result Shape : "
+        f"{result.shape}"
+    )
 
     # -------------------------------------------------
     # median forward
@@ -285,20 +297,38 @@ def process_one_file(pkl_file):
 
     median_forward = (
         result
-        .groupby(['eqp_id', 'wafer_id', 'module_id'])['TIME_FORWARD']
+        .groupby(
+            [
+                'eqp_id',
+                'wafer_id',
+                'module_id'
+            ]
+        )['TIME_FORWARD']
         .median()
         .round()
         .reset_index()
-        .rename(columns={'TIME_FORWARD': 'MEDIAN_FORWARD_TIME'})
+        .rename(
+            columns={
+                'TIME_FORWARD':
+                'MEDIAN_FORWARD_TIME'
+            }
+        )
     )
 
     result = result.merge(
         median_forward,
-        on=['eqp_id', 'wafer_id', 'module_id'],
+        on=[
+            'eqp_id',
+            'wafer_id',
+            'module_id'
+        ],
         how='left'
     )
 
-    print(f"Median Time : {time.perf_counter()-t0:.2f}s")
+    print(
+        f"Median Time : "
+        f"{time.perf_counter()-t0:.2f}s"
+    )
 
     # -------------------------------------------------
     # h6_alter
@@ -307,21 +337,37 @@ def process_one_file(pkl_file):
     t0 = time.perf_counter()
 
     lookup = (
-        df_h6[GROUP_COLS + ['TIME', 'ACT_POS']]
+        df_h6[
+            GROUP_COLS +
+            ['TIME', 'ACT_POS']
+        ]
         .drop_duplicates()
-        .rename(columns={
-            'TIME':    'MEDIAN_FORWARD_TIME',
-            'ACT_POS': 'ACT_POS_MEDIAN'
-        })
+        .rename(
+            columns={
+                'TIME':
+                    'MEDIAN_FORWARD_TIME',
+                'ACT_POS':
+                    'ACT_POS_MEDIAN'
+            }
+        )
     )
 
     result['MEDIAN_FORWARD_TIME'] = (
-        result['MEDIAN_FORWARD_TIME'].astype(float)
+        result['MEDIAN_FORWARD_TIME']
+        .astype(float)
     )
 
     result = result.merge(
         lookup,
-        on=GROUP_COLS + ['MEDIAN_FORWARD_TIME'],
+        on=[
+            'eqp_id',
+            'product',
+            'wafer_id',
+            'module_id',
+            'x',
+            'y',
+            'MEDIAN_FORWARD_TIME'
+        ],
         how='left'
     )
 
@@ -331,39 +377,42 @@ def process_one_file(pkl_file):
         result['ACT_POS_T0']
     )
 
-    print(f"H6 Alter Time : {time.perf_counter()-t0:.2f}s")
+    print(
+        f"H6 Alter Time : "
+        f"{time.perf_counter()-t0:.2f}s"
+    )
 
     # -------------------------------------------------
     # final
     # -------------------------------------------------
 
     result = result[
-        GROUP_COLS + [
+        [
+            'eqp_id',
+            'wafer_id',
+            'product',
+            'module_id',
+            'x',
+            'y',
+
             'TIME_FORWARD',
-            'ACT_POS_FORWARD',
-            'ACT_POS_SMOOTH_FORWARD',
-
-            'TIME_BACKWARD',
-            'ACT_POS_BACKWARD',
-            'ACT_POS_SMOOTH_BACKWARD',
-
-            'TIME_DIFF',
-            'MATCH',
-
             'MEDIAN_FORWARD_TIME',
 
             'ACT_POS_T0',
+            'ACT_POS_FORWARD',
             'ACT_POS_MEDIAN',
 
             'h6',
-            'h6_alter',
+            'h6_alter'
         ]
     ]
 
-    print(f"Total File Time : {time.perf_counter()-total_start:.2f}s")
+    print(
+        f"Total File Time : "
+        f"{time.perf_counter()-total_start:.2f}s"
+    )
 
     return result
-
 
 # =====================================================
 # Main
@@ -371,21 +420,34 @@ def process_one_file(pkl_file):
 
 all_results = []
 
-pkl_files = sorted(Path(INPUT_DIR).glob("*.pkl"))
+pkl_files = sorted(
+    Path(INPUT_DIR).glob("*.pkl")
+)
 
-print(f"\nFound {len(pkl_files)} files")
+print(
+    f"\nFound {len(pkl_files)} files"
+)
 
 for pkl_file in pkl_files:
 
-    result = process_one_file(pkl_file)
-
-    save_path = (
-        Path(OUTPUT_DIR) / f"{pkl_file.stem}_h6.csv"
+    result = process_one_file(
+        pkl_file
     )
 
-    result.to_csv(save_path, index=False)
+    save_path = (
+        Path(OUTPUT_DIR)
+        /
+        f"{pkl_file.stem}_h6.csv"
+    )
 
-    print(f"Saved : {save_path}")
+    result.to_csv(
+        save_path,
+        index=False
+    )
+
+    print(
+        f"Saved : {save_path}"
+    )
 
     all_results.append(result)
 
@@ -395,14 +457,29 @@ for pkl_file in pkl_files:
 
 if len(all_results):
 
-    final_df = pd.concat(all_results, ignore_index=True)
+    final_df = pd.concat(
+        all_results,
+        ignore_index=True
+    )
 
-    final_path = Path(OUTPUT_DIR) / "h6_result_all.csv"
+    final_path = (
+        Path(OUTPUT_DIR)
+        /
+        "h6_result_all.csv"
+    )
 
-    final_df.to_csv(final_path, index=False)
+    final_df.to_csv(
+        final_path,
+        index=False
+    )
 
     print("\n" + "=" * 80)
     print("FINAL")
     print("=" * 80)
-    print(f"Final Shape : {final_df.shape}")
-    print(f"Saved : {final_path}")
+    print(
+        f"Final Shape : "
+        f"{final_df.shape}"
+    )
+    print(
+        f"Saved : {final_path}"
+    )
