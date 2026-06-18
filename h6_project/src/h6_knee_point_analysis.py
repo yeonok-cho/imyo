@@ -1,0 +1,408 @@
+import pickle
+from pathlib import Path
+import time
+
+import numpy as np
+import pandas as pd
+
+# =====================================================
+# 설정
+# =====================================================
+
+INPUT_DIR = "/workspace/h6산출/cow_bonding_profile_results_eqp_69"
+OUTPUT_DIR = "/workspace/h6산출/h6_output_69"
+
+Path(OUTPUT_DIR).mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+GROUP_COLS = [
+    'eqp_id',
+    'product',
+    'wafer_id',
+    'module_id',
+    'x',
+    'y'
+]
+
+# =====================================================
+# Knee Point
+# =====================================================
+
+def find_knee_points(
+    g,
+    product,
+    smooth_window=31,
+    slope_ratio=0.1,
+    plateau_time_window=100
+):
+
+    g = (
+        g.sort_values('TIME')
+         .drop_duplicates(subset='TIME')
+         .copy()
+    )
+
+    if len(g) < 5:
+        return {
+            'TIME_FORWARD':             np.nan,
+            'ACT_POS_FORWARD':          np.nan,
+            'ACT_POS_SMOOTH_FORWARD':   np.nan,
+            'TIME_BACKWARD':            np.nan,
+            'ACT_POS_BACKWARD':         np.nan,
+            'ACT_POS_SMOOTH_BACKWARD':  np.nan,
+            'TIME_DIFF':                np.nan,
+            'MATCH':                    False,
+            'ACT_POS_T0':               np.nan,
+            'h6':                       np.nan,
+        }
+
+    # -------------------------
+    # Product 확인
+    # -------------------------
+    is_product_ending_with_2 = str(product).endswith("_2")
+
+    # -------------------------
+    # Smooth
+    # -------------------------
+    g['ACT_POS_SMOOTH'] = (
+        g['ACT_POS']
+        .rolling(
+            window=smooth_window,
+            center=True,
+            min_periods=1
+        )
+        .mean()
+    )
+
+    # -------------------------
+    # Slope
+    # -------------------------
+    g['SLOPE'] = np.gradient(
+        g['ACT_POS_SMOOTH'].values,
+        g['TIME'].values
+    )
+
+    max_slope = g['SLOPE'].max()
+    threshold = max_slope * slope_ratio
+
+    # -------------------------
+    # t0
+    # -------------------------
+    t0_time = g['t0_time'].iloc[0]
+
+    idx_t0 = (
+        (g['TIME'] - t0_time)
+        .abs()
+        .idxmin()
+    )
+
+    actpos_t0 = g.loc[idx_t0, 'ACT_POS']
+
+    # ==================================================
+    # Forward
+    # ==================================================
+    if is_product_ending_with_2:
+
+        forward_candidate = g[g['SLOPE'] <= threshold]
+
+        if len(forward_candidate):
+
+            idx_forward_start = forward_candidate.index[0]
+
+            start_time = g.loc[idx_forward_start, 'TIME']
+
+            search_region = g[
+                (g['TIME'] >= start_time) &
+                (g['TIME'] <= start_time + plateau_time_window)
+            ]
+
+            idx_forward = search_region['ACT_POS_SMOOTH'].idxmax()
+
+        else:
+            idx_forward = g['ACT_POS_SMOOTH'].idxmax()
+
+    else:
+
+        start_time = g['TIME'].min()
+
+        search_region = g[
+            (g['TIME'] >= start_time) &
+            (g['TIME'] <= start_time + plateau_time_window)
+        ]
+
+        idx_forward = search_region['ACT_POS_SMOOTH'].idxmax()
+
+    # ==================================================
+    # Backward
+    # ==================================================
+    backward_candidate = (
+        g.iloc[::-1]
+        .loc[lambda x: x['SLOPE'] > threshold]
+    )
+
+    if len(backward_candidate):
+        idx_backward = backward_candidate.index[0]
+    else:
+        idx_backward = g['ACT_POS_SMOOTH'].idxmax()
+
+    time_forward  = g.loc[idx_forward,  'TIME']
+    time_backward = g.loc[idx_backward, 'TIME']
+
+    h6 = g.loc[idx_forward, 'ACT_POS'] - actpos_t0
+
+    return {
+        'TIME_FORWARD':             time_forward,
+        'ACT_POS_FORWARD':          g.loc[idx_forward,  'ACT_POS'],
+        'ACT_POS_SMOOTH_FORWARD':   g.loc[idx_forward,  'ACT_POS_SMOOTH'],
+
+        'TIME_BACKWARD':            time_backward,
+        'ACT_POS_BACKWARD':         g.loc[idx_backward, 'ACT_POS'],
+        'ACT_POS_SMOOTH_BACKWARD':  g.loc[idx_backward, 'ACT_POS_SMOOTH'],
+
+        'TIME_DIFF':    abs(time_forward - time_backward),
+        'MATCH':        abs(time_forward - time_backward) <= 100,
+
+        'ACT_POS_T0':   actpos_t0,
+        'h6':           h6,
+    }
+
+
+# =====================================================
+# 파일 처리
+# =====================================================
+
+def process_one_file(pkl_file):
+
+    print("\n" + "=" * 80)
+    print(f"Processing : {pkl_file.name}")
+    print("=" * 80)
+
+    total_start = time.perf_counter()
+
+    # -------------------------------------------------
+    # load
+    # -------------------------------------------------
+
+    t0 = time.perf_counter()
+
+    with open(pkl_file, 'rb') as f:
+        df = pickle.load(f)
+
+    print(f"Load Time : {time.perf_counter()-t0:.2f}s")
+    print(f"Raw Shape : {df.shape}")
+
+    # -------------------------------------------------
+    # datatype
+    # -------------------------------------------------
+
+    if (
+        'ACT_POS' in df.columns
+        and
+        df['ACT_POS'].dtype == 'object'
+    ):
+        df['ACT_POS'] = pd.to_numeric(
+            df['ACT_POS'],
+            errors='coerce'
+        )
+
+    # -------------------------------------------------
+    # duplicate
+    # -------------------------------------------------
+
+    before = len(df)
+    df = df.drop_duplicates()
+    print(f"Duplicate Removed : {before - len(df)}")
+
+    # -------------------------------------------------
+    # filter
+    # -------------------------------------------------
+
+    t0 = time.perf_counter()
+
+    cols = [
+        't0_time',
+        'eqp_id',
+        'wafer_id',
+        'product',
+        'module_id',
+        'x',
+        'y',
+        'TIME',
+        'ACT_POS'
+    ]
+
+    df_h6 = df[cols].copy()
+
+    df_h6 = df_h6[
+        (df_h6['t0_time'] <= df_h6['TIME'])
+        &
+        (df_h6['TIME'] <= 9701)
+    ].copy()
+
+    print(f"Filter Time : {time.perf_counter()-t0:.2f}s")
+    print(f"Filtered Shape : {df_h6.shape}")
+
+    # -------------------------------------------------
+    # knee (for loop)
+    # -------------------------------------------------
+
+    t0 = time.perf_counter()
+
+    records = []
+
+    for key, g in df_h6.groupby(GROUP_COLS, observed=True):
+
+        eqp_id, product, wafer_id, module_id, x, y = key
+
+        knee = find_knee_points(g, product)
+
+        knee.update({
+            'eqp_id':     eqp_id,
+            'product':    product,
+            'wafer_id':   wafer_id,
+            'module_id':  module_id,
+            'x':          x,
+            'y':          y,
+        })
+
+        records.append(knee)
+
+    result = pd.DataFrame(records)
+
+    # NaN 행 제거 (TIME_FORWARD 기준)
+    result = result.dropna(subset=['TIME_FORWARD']).reset_index(drop=True)
+
+    print(f"Knee Time : {time.perf_counter()-t0:.2f}s")
+    print(f"Result Shape : {result.shape}")
+
+    # -------------------------------------------------
+    # median forward
+    # -------------------------------------------------
+
+    t0 = time.perf_counter()
+
+    median_forward = (
+        result
+        .groupby(['eqp_id', 'wafer_id', 'module_id'])['TIME_FORWARD']
+        .median()
+        .round()
+        .reset_index()
+        .rename(columns={'TIME_FORWARD': 'MEDIAN_FORWARD_TIME'})
+    )
+
+    result = result.merge(
+        median_forward,
+        on=['eqp_id', 'wafer_id', 'module_id'],
+        how='left'
+    )
+
+    print(f"Median Time : {time.perf_counter()-t0:.2f}s")
+
+    # -------------------------------------------------
+    # h6_alter
+    # -------------------------------------------------
+
+    t0 = time.perf_counter()
+
+    lookup = (
+        df_h6[GROUP_COLS + ['TIME', 'ACT_POS']]
+        .drop_duplicates()
+        .rename(columns={
+            'TIME':    'MEDIAN_FORWARD_TIME',
+            'ACT_POS': 'ACT_POS_MEDIAN'
+        })
+    )
+
+    result['MEDIAN_FORWARD_TIME'] = (
+        result['MEDIAN_FORWARD_TIME'].astype(float)
+    )
+
+    result = result.merge(
+        lookup,
+        on=GROUP_COLS + ['MEDIAN_FORWARD_TIME'],
+        how='left'
+    )
+
+    result['h6_alter'] = (
+        result['ACT_POS_MEDIAN']
+        -
+        result['ACT_POS_T0']
+    )
+
+    print(f"H6 Alter Time : {time.perf_counter()-t0:.2f}s")
+
+    # -------------------------------------------------
+    # final
+    # -------------------------------------------------
+
+    result = result[
+        GROUP_COLS + [
+            'TIME_FORWARD',
+            'ACT_POS_FORWARD',
+            'ACT_POS_SMOOTH_FORWARD',
+
+            'TIME_BACKWARD',
+            'ACT_POS_BACKWARD',
+            'ACT_POS_SMOOTH_BACKWARD',
+
+            'TIME_DIFF',
+            'MATCH',
+
+            'MEDIAN_FORWARD_TIME',
+
+            'ACT_POS_T0',
+            'ACT_POS_MEDIAN',
+
+            'h6',
+            'h6_alter',
+        ]
+    ]
+
+    print(f"Total File Time : {time.perf_counter()-total_start:.2f}s")
+
+    return result
+
+
+# =====================================================
+# Main
+# =====================================================
+
+all_results = []
+
+pkl_files = sorted(Path(INPUT_DIR).glob("*.pkl"))
+
+print(f"\nFound {len(pkl_files)} files")
+
+for pkl_file in pkl_files:
+
+    result = process_one_file(pkl_file)
+
+    save_path = (
+        Path(OUTPUT_DIR) / f"{pkl_file.stem}_h6.csv"
+    )
+
+    result.to_csv(save_path, index=False)
+
+    print(f"Saved : {save_path}")
+
+    all_results.append(result)
+
+# =====================================================
+# Final Merge
+# =====================================================
+
+if len(all_results):
+
+    final_df = pd.concat(all_results, ignore_index=True)
+
+    final_path = Path(OUTPUT_DIR) / "h6_result_all.csv"
+
+    final_df.to_csv(final_path, index=False)
+
+    print("\n" + "=" * 80)
+    print("FINAL")
+    print("=" * 80)
+    print(f"Final Shape : {final_df.shape}")
+    print(f"Saved : {final_path}")
