@@ -21,3 +21,7 @@
 # Logs
 *.log
 *.jsonl
+
+# Python
+__pycache__/
+*.pyc
