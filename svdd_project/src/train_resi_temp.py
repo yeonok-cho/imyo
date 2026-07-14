@@ -17,7 +17,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from model import Encoder, Decoder            # pretrain (AE)
-from model_v2 import FeatSVDD, extract_features
+from model_v2 import FeatSVDD
+from resi_temp_features import extract_features   # RESI/TEMP 전용 zone feature
 from resi_temp_datagen import (
     RESI_CONFIG, TEMP_CONFIG,
     generate_paired_dataset,
