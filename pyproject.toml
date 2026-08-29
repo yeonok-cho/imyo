@@ -1,0 +1,9 @@
+[project]
+name = "equipment-trend-detector"
+version = "0.1.0"
+description = "Causal wafer-side RESI and TEMP equipment trend detection"
+requires-python = ">=3.11"
+dependencies = ["numpy>=2.0", "pandas>=2.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
