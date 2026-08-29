@@ -3,3 +3,27 @@ __pycache__/
 .venv/
 .env
 .pytest_cache/
+
+# System & cache
+.local/
+.cache/
+.config/
+
+# Claude AI
+.claude/
+.claude.json
+
+# Shell & system files
+.bash_history
+.bash_logout
+.bashrc
+.profile
+.lesshst
+.motd_shown
+.sudo_as_admin_successful
+.landscape/
+.gitconfig
+
+# Logs
+*.log
+*.jsonl
